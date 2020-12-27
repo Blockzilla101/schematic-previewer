@@ -1,0 +1,48 @@
+apply plugin: 'java'
+
+project.ext.mainClassName = "schematichandler.SchematicHandler"
+sourceCompatibility = 14
+targetCompatibility = 14
+version = '1.0'
+
+sourceSets.main.java.srcDirs = ["src/"]
+sourceSets.main.resources.srcDirs = ["assets/"]
+
+allprojects{
+    repositories{
+        mavenLocal()
+        mavenCentral()
+        maven{ url "https://oss.sonatype.org/content/repositories/snapshots/" }
+        maven{ url "https://oss.sonatype.org/content/repositories/releases/" }
+        maven{ url "https://jitpack.io" }
+        jcenter()
+    }
+}
+
+ext{
+    mindustryVersion = 'v122'
+    arcHash = '2b5815edf64d5431dee6ad4ac8ba45f069f66350'
+}
+
+task run(dependsOn: classes, type: JavaExec){
+    main = project.mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+}
+
+task dist(type: Jar){
+    from files(sourceSets.main.output.classesDirs)
+    from files(sourceSets.main.output.resourcesDir)
+    from {configurations.runtimeClasspath.collect{ it.isDirectory() || !it.name.endsWithAny(".zip", ".jar") ? it : zipTree(it) }}
+
+    archiveFileName = "previewer.jar"
+
+    manifest{
+        attributes 'Main-Class': project.mainClassName
+    }
+}
+
+dependencies{
+    compile "com.github.Anuken.Arc:arc-core:$arcHash"
+    compile "com.github.Anuken.Mindustry:core:$mindustryVersion"
+}
