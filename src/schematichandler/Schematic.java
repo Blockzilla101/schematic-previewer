@@ -35,6 +35,7 @@ public class Schematic {
 
     private BufferedImage currentImage;
     private Graphics2D currentGraphics;
+    private final float bridgeOpacity = 0.75f;
 
     Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage) throws IOException {
         init();
@@ -148,10 +149,15 @@ public class Schematic {
             }
         });
 
+        var bridgeOpacity = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, this.bridgeOpacity);
+        var opaque = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
+
         Lines.useLegacyLine = true;
         Core.atlas.setErrorRegion("error");
         Draw.scl = 1f / 4f;
         Core.batch = new SpriteBatch(0){
+            private boolean changed = false;
+
             @Override
             protected void draw(TextureRegion region, float x, float y, float originX, float originY, float width, float height, float rotation){
                 x += 4;
@@ -170,6 +176,15 @@ public class Schematic {
 
                 currentGraphics.setTransform(at);
                 BufferedImage image = regions.get(((AtlasRegion)region).name);
+
+                if (((AtlasRegion)region).name.endsWith("-bridge")) {
+                    currentGraphics.setComposite(bridgeOpacity);
+                    changed = true;
+                } else if (changed) {
+                    currentGraphics.setComposite(opaque);
+                    changed = false;
+                }
+
                 if(!color.equals(Color.white)){
                     image = tint(image, color);
                 }
