@@ -30,15 +30,13 @@ public class SchematicHandler {
             if (!createImage) System.out.println("Not creating image");
             long start = System.currentTimeMillis();
 
-            var schem = new Schematic(path, background, offset, color);
+            var schem = new Schematic(path, background, offset, color, createImage);
             if (createImage) ImageIO.write(schem.image, "png", new File(path.replaceAll("\\.msch$", ".png")));
 
             long end = System.currentTimeMillis();
 
             var temp = new StringBuilder(">requirements={ ");
-            schem.schematic.requirements().forEach(item -> {
-                temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", ");
-            });
+            schem.schematic.requirements().forEach(item -> temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", "));
             System.out.println(temp.substring(0, temp.length() - 2) + " }");
             System.out.println(">blocks=" + schem.schematic.tiles.size);
             System.out.println();

@@ -34,13 +34,15 @@ public class Schematic {
     private BufferedImage currentImage;
     private Graphics2D currentGraphics;
 
-    Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor) throws IOException {
+    Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage) throws IOException {
         if (!Fi.get(path).exists()) {
             throw new IOException(path + " is no where to be found");
         }
         init();
 
         schematic = Schematics.read(Fi.get(path));
+        if (!createImage) return;
+
         var schematicImage = new BufferedImage(schematic.width * 32, schematic.height * 32, BufferedImage.TYPE_INT_ARGB);
 
         Draw.reset();
