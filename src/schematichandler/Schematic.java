@@ -12,6 +12,7 @@ import arc.mock.*;
 import arc.struct.*;
 import arc.files.*;
 
+import com.jidesoft.swing.*;
 import mindustry.*;
 import mindustry.core.*;
 import mindustry.ctype.*;
@@ -62,6 +63,13 @@ public class Schematic {
             int width = schematicImage.getWidth() + (backgroundOffset * 2);
             int height = schematicImage.getHeight() + (backgroundOffset * 2);
 
+            var factory = new ShadowFactory();
+            factory.setRenderingHint(ShadowFactory.KEY_BLUR_QUALITY, ShadowFactory.VALUE_BLUR_QUALITY_HIGH);
+            factory.setColor(java.awt.Color.black);
+            factory.setOpacity(0.75f);
+            factory.setSize(24);
+            var shadow = factory.createShadow(schematicImage);
+
             BufferedImage background = ImageIO.read(Core.files.internal("sprites/schematic-background.png").read());
             BufferedImage withBackground = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
@@ -70,7 +78,8 @@ public class Schematic {
             currentImage = withBackground;
 
             currentGraphics.drawImage(background, 0, 0, null);
-            currentGraphics.drawImage(schematicImage, backgroundOffset, backgroundOffset, schematicImage.getWidth(), schematicImage.getHeight(), null);
+            currentGraphics.drawImage(shadow, backgroundOffset - 24, backgroundOffset - 24, null);
+            currentGraphics.drawImage(schematicImage, backgroundOffset, backgroundOffset, null);
 
             currentGraphics.setColor(borderColor);
             currentGraphics.setStroke(new BasicStroke(4f));
@@ -78,7 +87,6 @@ public class Schematic {
 
             this.image = withBackground;
         }
-
         currentGraphics.dispose();
     }
 

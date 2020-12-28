@@ -45,4 +45,5 @@ task dist(type: Jar){
 dependencies{
     compile "com.github.Anuken.Arc:arc-core:$arcHash"
     compile "com.github.Anuken.Mindustry:core:$mindustryVersion"
+    compile group: 'com.jidesoft', name: 'jide-oss', version: '3.6.11'
 }
