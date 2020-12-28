@@ -35,10 +35,14 @@ public class SchematicHandler {
 
             long end = System.currentTimeMillis();
 
+            System.out.println(">name=" + schem.schematic.name());
+            System.out.println(">description=" + schem.schematic.description());
             var temp = new StringBuilder(">requirements={ ");
             schem.schematic.requirements().forEach(item -> temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", "));
             System.out.println(temp.substring(0, temp.length() - 2) + " }");
-            System.out.println(">blocks=" + schem.schematic.tiles.size);
+            System.out.println(">numBlocks=" + schem.schematic.tiles.size);
+            System.out.println(">width=" + schem.schematic.width);
+            System.out.println(">height=" + schem.schematic.height);
             System.out.println();
 
             long elapsed = end - start;
