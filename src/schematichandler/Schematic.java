@@ -18,17 +18,14 @@ import mindustry.ctype.*;
 import mindustry.entities.units.*;
 import mindustry.game.*;
 import mindustry.world.*;
-import mindustry.world.blocks.environment.*;
 
 import javax.imageio.*;
 import java.awt.*;
 import java.awt.geom.*;
 import java.awt.image.*;
 import java.io.*;
-import java.net.*;
-import java.util.*;
 
-import static mindustry.Vars.world;
+import static mindustry.Vars.*;
 
 public class Schematic {
     public BufferedImage image;
@@ -37,32 +34,50 @@ public class Schematic {
     private BufferedImage currentImage;
     private Graphics2D currentGraphics;
 
-    Schematic(String path) throws IOException {
-        this(path, true);
-    }
-
-    Schematic(String path, boolean borderless) throws IOException {
+    Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor) throws IOException {
         if (!Fi.get(path).exists()) {
             throw new IOException(path + " is no where to be found");
         }
         init();
 
         schematic = Schematics.read(Fi.get(path));
-        image = new BufferedImage(schematic.width * 32, schematic.height * 32, BufferedImage.TYPE_INT_ARGB);
+        var schematicImage = new BufferedImage(schematic.width * 32, schematic.height * 32, BufferedImage.TYPE_INT_ARGB);
 
-        if (borderless) {
+        Draw.reset();
+        Seq<BuildPlan> requests = schematic.tiles.map(t -> new BuildPlan(t.x, t.y, t.rotation, t.block, t.config));
+        currentImage = schematicImage;
+        currentGraphics = schematicImage.createGraphics();
+        requests.each(req -> {
+            req.animScale = 1f;
+            req.worldContext = false;
+            req.block.drawRequestRegion(req, requests::each);
             Draw.reset();
-            Seq<BuildPlan> requests = schematic.tiles.map(t -> new BuildPlan(t.x, t.y, t.rotation, t.block, t.config));
-            currentImage = image;
-            currentGraphics = image.createGraphics();
-            requests.each(req -> {
-                req.animScale = 1f;
-                req.worldContext = false;
-                req.block.drawRequestRegion(req, requests::each);
-                Draw.reset();
-            });
-            requests.each(req -> req.block.drawRequestConfigTop(req, requests::each));
+        });
+        requests.each(req -> req.block.drawRequestConfigTop(req, requests::each));
+        image = schematicImage;
+
+        if (drawBackground) {
+            int width = schematicImage.getWidth() + (backgroundOffset * 2);
+            int height = schematicImage.getHeight() + (backgroundOffset * 2);
+
+            BufferedImage background = ImageIO.read(Core.files.internal("sprites/schematic-background.png").read());
+            BufferedImage withBackground = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+
+            background = repeatToSize(background, width, height);
+            currentGraphics = withBackground.createGraphics();
+            currentImage = withBackground;
+
+            currentGraphics.drawImage(background, 0, 0, null);
+            currentGraphics.drawImage(schematicImage, backgroundOffset, backgroundOffset, schematicImage.getWidth(), schematicImage.getHeight(), null);
+
+            currentGraphics.setColor(borderColor);
+            currentGraphics.setStroke(new BasicStroke(4f));
+            currentGraphics.drawRect(2, 2, width - 4, height - 4);
+
+            this.image = withBackground;
         }
+
+        currentGraphics.dispose();
     }
 
     private void init() {
@@ -177,6 +192,20 @@ public class Schematic {
             }
         }
         return copy;
+    }
+
+    BufferedImage repeatToSize(BufferedImage image, int newWidth, int newHeight){
+        BufferedImage resized = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = resized.createGraphics();
+
+        for(int x = 0; x <= newWidth; x += image.getWidth()){
+            for(int y = 0; y <= newHeight; y += image.getHeight()){
+                g.drawImage(image, x, y, null);
+            }
+        }
+
+        g.dispose();
+        return resized;
     }
 
     static class ImageData implements TextureData{
