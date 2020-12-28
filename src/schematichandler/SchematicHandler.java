@@ -5,11 +5,12 @@ import arc.util.*;
 import javax.imageio.*;
 import java.awt.*;
 import java.io.*;
+import java.util.concurrent.*;
 
 public class SchematicHandler {
     public static void main(String[] args ){
         if (args.length == 0) {
-            System.out.println("Usage: previewer.jar <Path> [Background=false] [Background Offset=32] [Border Color=Gray]");
+            System.out.println("Usage: previewer.jar <Path> [Background=false] [Background Offset=32] [Border Color=Gray] [Create Image=true]");
             return;
         }
 
@@ -22,11 +23,31 @@ public class SchematicHandler {
         var background = args.length >= 2 && args[1].equals("true");
         var offset = args.length >= 3 ? Strings.parseInt(args[2]) : 32;
         var color = args.length >= 4 ? fromHex(args[3]) : Color.GRAY;
+        var createImage = args.length < 5 || args[4].equals("true");
 
         try {
             System.out.println("Reading schematic " + path);
+            if (!createImage) System.out.println("Not creating image");
+            long start = System.currentTimeMillis();
+
             var schem = new Schematic(path, background, offset, color);
-            ImageIO.write(schem.image, "png", new File(path.replaceAll("\\.msch$", ".png")));
+            if (createImage) ImageIO.write(schem.image, "png", new File(path.replaceAll("\\.msch$", ".png")));
+
+            long end = System.currentTimeMillis();
+
+            var temp = new StringBuilder(">requirements={ ");
+            schem.schematic.requirements().forEach(item -> {
+                temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", ");
+            });
+            System.out.println(temp.substring(0, temp.length() - 2) + " }");
+            System.out.println(">blocks=" + schem.schematic.tiles.size);
+            System.out.println();
+
+            long elapsed = end - start;
+            System.out.printf("Took %d.%ds%n",
+                TimeUnit.MILLISECONDS.toSeconds(elapsed),
+                elapsed - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(elapsed))
+            );
 
         } catch(Exception e) {
             e.printStackTrace();

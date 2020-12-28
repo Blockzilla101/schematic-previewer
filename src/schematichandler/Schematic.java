@@ -194,7 +194,7 @@ public class Schematic {
         return copy;
     }
 
-    BufferedImage repeatToSize(BufferedImage image, int newWidth, int newHeight){
+    private BufferedImage repeatToSize(BufferedImage image, int newWidth, int newHeight){
         BufferedImage resized = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = resized.createGraphics();
 
