@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+./gradlew dist --no-daemon -q
+
+cp  ./build/libs/previewer.jar ../Botzilla/schematic-previewer.jar
+scp ./build/libs/previewer.jar nydus:/root/Botzilla/schematic-previewer.jar
