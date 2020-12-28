@@ -29,6 +29,7 @@ import java.io.*;
 import static mindustry.Vars.*;
 
 public class Schematic {
+    public static final String header = "bXNjaA";
     public BufferedImage image;
     public mindustry.game.Schematic schematic;
 
@@ -36,12 +37,20 @@ public class Schematic {
     private Graphics2D currentGraphics;
 
     Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage) throws IOException {
-        if (!Fi.get(path).exists()) {
-            throw new IOException(path + " is no where to be found");
-        }
         init();
+        if (Fi.get(path).exists()) {
+            schematic = Schematics.read(Fi.get(path));
+        } else if (path.startsWith(header)) {
+            try {
+                schematic = Schematics.readBase64(path);
+            } catch(RuntimeException e) {
+                e.printStackTrace();
+                throw new IOException("Either the schematic is inaccessible or provided base64 is invalid");
+            }
+        } else {
+            throw new IOException("That schematic is no where to be found");
+        }
 
-        schematic = Schematics.read(Fi.get(path));
         if (!createImage) return;
 
         var schematicImage = new BufferedImage(schematic.width * 32, schematic.height * 32, BufferedImage.TYPE_INT_ARGB);

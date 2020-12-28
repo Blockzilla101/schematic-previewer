@@ -26,12 +26,24 @@ public class SchematicHandler {
         var createImage = args.length < 5 || args[4].equals("true");
 
         try {
-            System.out.println("Reading schematic " + path);
+            if (path.startsWith(Schematic.header)) {
+                System.out.println("Reading base64 schematic");
+            } else {
+                System.out.println("Reading schematic " + path);
+            }
             if (!createImage) System.out.println("Not creating image");
             long start = System.currentTimeMillis();
 
             var schem = new Schematic(path, background, offset, color, createImage);
-            if (createImage) ImageIO.write(schem.image, "png", new File(path.replaceAll("\\.msch$", ".png")));
+            if (createImage) {
+                if (path.startsWith(Schematic.header)) {
+                    String name = Time.millis() + ".png";
+                    ImageIO.write(schem.image, "png", new File(name));
+                    System.out.println("Wrote png to " + name);
+                } else {
+                    ImageIO.write(schem.image, "png", new File(path.replaceAll("\\.msch$", ".png")));
+                }
+            }
 
             long end = System.currentTimeMillis();
 
