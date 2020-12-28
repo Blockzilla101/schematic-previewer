@@ -36,6 +36,7 @@ public class Schematic {
     private BufferedImage currentImage;
     private Graphics2D currentGraphics;
     private final float bridgeOpacity = 0.75f;
+    private ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
 
     Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage) throws IOException {
         init();
@@ -122,7 +123,6 @@ public class Schematic {
         Core.atlas = new TextureAtlas();
 
         ObjectMap<Page, BufferedImage> images = new ObjectMap<>();
-        ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
 
         data.getPages().each(page -> {
             try{
@@ -142,6 +142,11 @@ public class Schematic {
                 graphics.drawImage(images.get(reg.page), 0, 0, reg.width, reg.height, reg.left, reg.top, reg.left + reg.width, reg.top + reg.height, null);
 
                 ImageRegion region = new ImageRegion(reg.name, reg.page.texture, reg.left, reg.top, image);
+
+                if (region.name.equals("inverted-sorter") || region.name.equals("sorter")) {
+                    graphics.drawImage(regions.get("cross"), 0, 0, null);
+                }
+
                 Core.atlas.addRegion(region.name, region);
                 regions.put(region.name, image);
             }catch(Exception e){
