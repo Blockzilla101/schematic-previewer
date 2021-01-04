@@ -19,6 +19,7 @@ import mindustry.ctype.*;
 import mindustry.entities.units.*;
 import mindustry.game.*;
 import mindustry.world.*;
+import mindustry.world.blocks.distribution.*;
 
 import javax.imageio.*;
 import java.awt.*;
@@ -70,7 +71,19 @@ public class Schematic {
             req.block.drawRequestRegion(req, requests::each);
             Draw.reset();
         });
-        requests.each(req -> req.block.drawRequestConfigTop(req, requests::each));
+        requests.each(req -> {
+            if (req.block instanceof ItemBridge){
+                Draw.alpha(bridgeOpacity);
+                req.block.drawRequestConfigTop(req, requests::each);
+                Draw.reset();
+            }
+        });
+        requests.each(req -> {
+            if (!(req.block instanceof ItemBridge)){
+                req.block.drawRequestConfigTop(req, requests::each);
+                Draw.reset();
+            }
+        });
         image = schematicImage;
 
         if (drawBackground) {
@@ -158,15 +171,10 @@ public class Schematic {
             }
         });
 
-        var bridgeOpacity = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, this.bridgeOpacity);
-        var opaque = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f);
-
         Lines.useLegacyLine = true;
         Core.atlas.setErrorRegion("error");
         Draw.scl = 1f / 4f;
         Core.batch = new SpriteBatch(0){
-            private boolean changed = false;
-
             @Override
             protected void draw(TextureRegion region, float x, float y, float originX, float originY, float width, float height, float rotation){
                 x += 4;
@@ -185,14 +193,6 @@ public class Schematic {
 
                 currentGraphics.setTransform(at);
                 BufferedImage image = regions.get(((AtlasRegion)region).name);
-
-                if (((AtlasRegion)region).name.endsWith("-bridge")) {
-                    currentGraphics.setComposite(bridgeOpacity);
-                    changed = true;
-                } else if (changed) {
-                    currentGraphics.setComposite(opaque);
-                    changed = false;
-                }
 
                 if(!color.equals(Color.white)){
                     image = tint(image, color);
