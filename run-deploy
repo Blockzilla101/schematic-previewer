@@ -3,4 +3,7 @@
 ./gradlew dist --no-daemon -q
 
 cp  ./build/libs/previewer.jar ../Botzilla/schematic-previewer.jar
-scp ./build/libs/previewer.jar nydus:/root/Botzilla/schematic-previewer.jar
+
+scp ./build/libs/previewer.jar nydus:/root/schematic-previewer.jar
+ssh nydus cp /root/schematic-previewer.jar /root/Botzilla/schematic-previewer.jar
+ssh nydus rm /root/schematic-previewer.jar

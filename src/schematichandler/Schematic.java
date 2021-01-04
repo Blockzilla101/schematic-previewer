@@ -25,6 +25,7 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.awt.image.*;
 import java.io.*;
+import java.util.concurrent.*;
 
 import static mindustry.Vars.*;
 
@@ -37,6 +38,8 @@ public class Schematic {
     private Graphics2D currentGraphics;
     private final float bridgeOpacity = 0.75f;
     private ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
+
+    public long loadTime = 0;
 
     Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage) throws IOException {
         init();
@@ -102,6 +105,7 @@ public class Schematic {
     }
 
     private void init() {
+        long start = System.currentTimeMillis();
         Version.enabled = false;
         Vars.content = new ContentLoader();
         Vars.content.createBaseContent();
@@ -217,6 +221,13 @@ public class Schematic {
                 return new Tile(x, y);
             }
         };
+
+        long end = System.currentTimeMillis();
+        loadTime = end - start;
+        System.out.printf("Time to load %d.%ds%n\n",
+            TimeUnit.MILLISECONDS.toSeconds(loadTime),
+            loadTime - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(loadTime))
+        );
     }
 
     private BufferedImage tint(BufferedImage image, Color color){

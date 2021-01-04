@@ -53,14 +53,21 @@ public class SchematicHandler {
             schem.schematic.requirements().forEach(item -> temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", "));
             System.out.println(temp.substring(0, temp.length() - 2) + " }");
             System.out.println(">numBlocks=" + schem.schematic.tiles.size);
+            System.out.println(">powerProd=" + schem.schematic.powerProduction() * 60f);
+            System.out.println(">powerUsed=" + schem.schematic.powerConsumption() * 60f);
             System.out.println(">width=" + schem.schematic.width);
             System.out.println(">height=" + schem.schematic.height);
             System.out.println();
 
-            long elapsed = end - start;
+            long elapsed = end - start - schem.loadTime; // TODO: combine into one logged line
             System.out.printf("Took %d.%ds%n",
                 TimeUnit.MILLISECONDS.toSeconds(elapsed),
                 elapsed - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(elapsed))
+            );
+            long totalElapsed = end - start;
+            System.out.printf("Total Time %d.%ds%n",
+                TimeUnit.MILLISECONDS.toSeconds(totalElapsed),
+                totalElapsed - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(totalElapsed))
             );
 
         } catch(Exception e) {
