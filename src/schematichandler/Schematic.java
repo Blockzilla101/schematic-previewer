@@ -31,7 +31,7 @@ import java.util.concurrent.*;
 import static mindustry.Vars.*;
 
 public class Schematic {
-    public static final String header = "bXNjaA";
+    public static final String header = schematicBaseStart;
     public BufferedImage image;
     public mindustry.game.Schematic schematic;
 
@@ -40,6 +40,8 @@ public class Schematic {
     private final float bridgeOpacity = 0.75f;
     private ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
 
+    public int size = 3;
+    public int tileSize = 8;
     public long loadTime = 0;
 
     Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage) throws IOException {
@@ -59,7 +61,15 @@ public class Schematic {
 
         if (!createImage) return;
 
-        var schematicImage = new BufferedImage(schematic.width * 32, schematic.height * 32, BufferedImage.TYPE_INT_ARGB);
+        while(getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory() && size > 1) size--;
+        while(getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory() && tileSize > 1) tileSize--;
+
+        if (getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory()) {
+            throw new RuntimeException("Schematic is way to big to render even at a reduced size");
+        }
+
+        System.out.printf("Will be rendering at size %d and tilesize %d\n\n", size, tileSize);
+        var schematicImage = new BufferedImage(schematic.width * size * tileSize, schematic.height * size * tileSize, BufferedImage.TYPE_INT_ARGB);
 
         Draw.reset();
         Seq<BuildPlan> requests = schematic.tiles.map(t -> new BuildPlan(t.x, t.y, t.rotation, t.block, t.config));
@@ -115,6 +125,17 @@ public class Schematic {
             this.image = withBackground;
         }
         currentGraphics.dispose();
+    }
+
+    private long getMemUsed(boolean drawBackground, int backgroundOffset) {
+        if (drawBackground) {
+            var schemMem = (schematic.width * tileSize * size) * (schematic.height * tileSize * size) * 4;
+            var backgroundMem = ((schematic.width + backgroundOffset) * tileSize * size) * ((schematic.height + backgroundOffset) * tileSize * size) * 4;
+            var shadowMem = schemMem * 2;
+            return schemMem + backgroundMem + shadowMem;
+        } else {
+            return (schematic.width * tileSize * size) * (schematic.height * tileSize * size) * 4;
+        }
     }
 
     private void init() {
@@ -177,19 +198,19 @@ public class Schematic {
         Core.batch = new SpriteBatch(0){
             @Override
             protected void draw(TextureRegion region, float x, float y, float originX, float originY, float width, float height, float rotation){
-                x += 4;
-                y += 4;
+                x += size;
+                y += size;
 
-                x *= 4;
-                y *= 4;
-                width *= 4;
-                height *= 4;
+                x *= size;
+                y *= size;
+                width *= size;
+                height *= size;
 
                 y = currentImage.getHeight() - (y + height/2f) - height/2f;
 
                 AffineTransform at = new AffineTransform();
                 at.translate(x, y);
-                at.rotate(-rotation * Mathf.degRad, originX * 4, originY * 4);
+                at.rotate(-rotation * Mathf.degRad, originX * size, originY * size);
 
                 currentGraphics.setTransform(at);
                 BufferedImage image = regions.get(((AtlasRegion)region).name);
@@ -224,7 +245,7 @@ public class Schematic {
 
         long end = System.currentTimeMillis();
         loadTime = end - start;
-        System.out.printf("Time to load %d.%ds%n\n",
+        System.out.printf("Time to load %d.%ds%n",
             TimeUnit.MILLISECONDS.toSeconds(loadTime),
             loadTime - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(loadTime))
         );
