@@ -47,8 +47,8 @@ public class SchematicHandler {
 
             long end = System.currentTimeMillis();
 
-            System.out.println(">name=" + schem.schematic.name());
-            System.out.println(">description=" + schem.schematic.description());
+            System.out.println(">name=" + removeNewlines(schem.schematic.name()));
+            System.out.println(">description=" + removeNewlines(schem.schematic.description()));
             var temp = new StringBuilder(">requirements={ ");
             schem.schematic.requirements().forEach(item -> temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", "));
             System.out.println(temp.substring(0, temp.length() - 2) + " }");
@@ -74,6 +74,10 @@ public class SchematicHandler {
             e.printStackTrace();
             System.exit(1);
         }
+    }
+
+    public static String removeNewlines(String str) {
+        return str.replace(";", "\\;").replace("\r\n", "\n").replace("\r", "\n").replace("\n", ";");
     }
 
     public static Color fromHex(String colorStr) {
