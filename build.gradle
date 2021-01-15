@@ -20,8 +20,8 @@ allprojects{
 }
 
 ext{
-    mindustryVersion = 'v122'
-    arcHash = '2b5815edf64d5431dee6ad4ac8ba45f069f66350'
+    mindustryHash = '81ce3a28a19adaaf457a626d713fdc68e80b442e'
+    arcHash = 'f89e6a465fe9d139bd192960c2ebdff33c2af86a'
 }
 
 task run(dependsOn: classes, type: JavaExec){
@@ -44,6 +44,6 @@ task dist(type: Jar){
 
 dependencies{
     compile "com.github.Anuken.Arc:arc-core:$arcHash"
-    compile "com.github.Anuken.Mindustry:core:$mindustryVersion"
+    compile "com.github.Anuken.Mindustry:core:$mindustryHash"
     compile group: 'com.jidesoft', name: 'jide-oss', version: '3.6.11'
 }
