@@ -40,7 +40,7 @@ public class Schematic {
     private final float bridgeOpacity = 0.75f;
     private ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
 
-    public int size = 3;
+    public int size = 4;
     public int tileSize = 8;
     public long loadTime = 0;
 
@@ -96,7 +96,7 @@ public class Schematic {
         });
         image = schematicImage;
 
-        if (drawBackground) {
+        if (!drawBackground) {
             int width = schematicImage.getWidth() + (backgroundOffset * 2);
             int height = schematicImage.getHeight() + (backgroundOffset * 2);
 
@@ -198,8 +198,8 @@ public class Schematic {
         Core.batch = new SpriteBatch(0){
             @Override
             protected void draw(TextureRegion region, float x, float y, float originX, float originY, float width, float height, float rotation){
-                x += size;
-                y += size;
+                x += 4;
+                y += 4;
 
                 x *= size;
                 y *= size;
