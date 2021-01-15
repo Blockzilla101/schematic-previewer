@@ -96,7 +96,7 @@ public class Schematic {
         });
         image = schematicImage;
 
-        if (!drawBackground) {
+        if (drawBackground) {
             int width = schematicImage.getWidth() + (backgroundOffset * 2);
             int height = schematicImage.getHeight() + (backgroundOffset * 2);
 
