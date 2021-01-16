@@ -20,8 +20,8 @@ allprojects{
 }
 
 ext{
-    mindustryHash = '81ce3a28a19adaaf457a626d713fdc68e80b442e'
-    arcHash = 'f89e6a465fe9d139bd192960c2ebdff33c2af86a'
+    mindustryHash = 'f3b1ef02e3a495bc84fac8f821ef96a96f99c81f'
+    arcHash = '25dcd2f7664f3c5a669447fdf8dffaea7e65fe0d'
 }
 
 task run(dependsOn: classes, type: JavaExec){

@@ -81,7 +81,7 @@ public class Schematic {
             req.block.drawRequestRegion(req, requests::each);
             Draw.reset();
         });
-        requests.each(req -> {
+        requests.each(req -> { // Draw bridge conveyors separately first to avoid some being over power node connections and some below
             if (req.block instanceof ItemBridge){
                 Draw.alpha(bridgeOpacity);
                 req.block.drawRequestConfigTop(req, requests::each);
@@ -178,12 +178,7 @@ public class Schematic {
                 Graphics2D graphics = image.createGraphics();
 
                 graphics.drawImage(images.get(reg.page), 0, 0, reg.width, reg.height, reg.left, reg.top, reg.left + reg.width, reg.top + reg.height, null);
-
                 ImageRegion region = new ImageRegion(reg.name, reg.page.texture, reg.left, reg.top, image);
-
-                if (region.name.equals("inverted-sorter") || region.name.equals("sorter")) {
-                    graphics.drawImage(regions.get("cross"), 0, 0, null);
-                }
 
                 Core.atlas.addRegion(region.name, region);
                 regions.put(region.name, image);
