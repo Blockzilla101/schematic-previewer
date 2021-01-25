@@ -62,7 +62,7 @@ public class Schematic {
         if (!createImage) return;
 
         while(getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory() && size > 1) size--;
-        while(getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory() && tileSize > 1) tileSize--; // TODO: fix cutting of schematic when below from 8
+        // while(getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory() && tileSize > 1) tileSize--;
 
         if (getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory()) {
             throw new RuntimeException("Schematic is way to big to render even at a reduced size");
