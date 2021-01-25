@@ -49,9 +49,14 @@ public class SchematicHandler {
 
             System.out.println(">name=" + removeNewlines(schem.schematic.name()));
             System.out.println(">description=" + removeNewlines(schem.schematic.description()));
-            var temp = new StringBuilder(">requirements={ ");
-            schem.schematic.requirements().forEach(item -> temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", "));
-            System.out.println(temp.substring(0, temp.length() - 2) + " }");
+            if (schem.schematic.requirements().toSeq().size > 0) {
+                var temp = new StringBuilder(">requirements={ ");
+                schem.schematic.requirements().forEach(item -> temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", "));
+                System.out.println(temp.substring(0, temp.length() - 2) + " }");
+            } else {
+                System.out.println(">requirements={ }");
+            }
+
             System.out.println(">numBlocks=" + schem.schematic.tiles.size);
             System.out.println(">powerProd=" + schem.schematic.powerProduction() * 60f);
             System.out.println(">powerUsed=" + schem.schematic.powerConsumption() * 60f);
