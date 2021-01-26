@@ -32,7 +32,7 @@ import java.util.concurrent.*;
 
 import static mindustry.Vars.*;
 
-public class Schematic {
+public class Schematic{
     public static final String header = schematicBaseStart;
     public BufferedImage image;
     public mindustry.game.Schematic schematic;
@@ -76,7 +76,7 @@ public class Schematic {
 
         while(getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory() && size > 1) size--;
 
-        if (getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory()) {
+        if(getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory()){
             throw new RuntimeException("Schematic is way to big to render even at a reduced size");
         }
 
@@ -93,21 +93,21 @@ public class Schematic {
             Draw.reset();
         });
         requests.each(req -> { // Draw bridge conveyors separately first to avoid some being over power node connections and some below
-            if (req.block instanceof ItemBridge){
+            if(req.block instanceof ItemBridge){
                 Draw.alpha(bridgeOpacity);
                 req.block.drawRequestConfigTop(req, requests::each);
                 Draw.reset();
             }
         });
         requests.each(req -> {
-            if (!(req.block instanceof ItemBridge)){
+            if(!(req.block instanceof ItemBridge)){
                 req.block.drawRequestConfigTop(req, requests::each);
                 Draw.reset();
             }
         });
         image = schematicImage;
 
-        if (drawBackground) {
+        if(drawBackground){
             int width = schematicImage.getWidth() + (backgroundOffset * 2);
             int height = schematicImage.getHeight() + (backgroundOffset * 2);
 
@@ -116,9 +116,9 @@ public class Schematic {
 
             BufferedImage art = null;
 
-            if (pixelArt && hasPixelArt) {
+            if(pixelArt && hasPixelArt){
                 art = getPixelArt(requests, pixelSize, pixelArtBorderPixels);
-                if (art.getHeight() <= art.getWidth()) {
+                if(art.getHeight() <= art.getWidth()){
                     width -= backgroundOffset * 2;
                     height -= 20;
 
@@ -140,7 +140,7 @@ public class Schematic {
 //                    schematicOffsetY = art.getHeight() + 20;
 //                }
 
-                if (art.getHeight() > art.getWidth()) {
+                if(art.getHeight() > art.getWidth()){
                     width -= backgroundOffset;
                     height -= 10;
 
@@ -173,7 +173,7 @@ public class Schematic {
             currentGraphics.setStroke(new BasicStroke(4f));
             currentGraphics.drawRect(2, 2, width - 4, height - 4);
 
-            if (pixelArt && hasPixelArt) {
+            if(pixelArt && hasPixelArt){
                 currentGraphics.drawImage(art, currentImage.getWidth() - art.getWidth() - 4, 4, null);
 
                 currentGraphics.setColor(borderColor);
@@ -182,9 +182,9 @@ public class Schematic {
             }
 
             this.image = withBackground;
-        } else {
-            if (pixelArt && hasPixelArt) {
-                var art = getPixelArt(requests, pixelSize, pixelArtBorderPixels);
+        }else{
+            if(pixelArt && hasPixelArt){
+                var art = getPixelArt(requests, pixelSize, pixelArtBorderPixels, true);
                 var full = new BufferedImage(currentImage.getWidth() + art.getWidth(), currentImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
                 currentGraphics = full.createGraphics();
@@ -199,29 +199,29 @@ public class Schematic {
         currentGraphics.dispose();
     }
 
-    private long getMemUsed(boolean drawBackground, int backgroundOffset, boolean pixelArt) {
-        if (drawBackground) {
+    private long getMemUsed(boolean drawBackground, int backgroundOffset, boolean pixelArt){
+        if(drawBackground){
             var schemMem = (schematic.width * tilesize * size) * (schematic.height * tilesize * size) * 4;
             var backgroundMem = 0;
             var shadowMem = schemMem * 2;
 
-            if (pixelArt && hasPixelArt) {
+            if(pixelArt && hasPixelArt){
                 var artWidth = (schematic.width + pixelArtBorderPixels) * pixelSize;
                 var artHeight = (schematic.height + pixelArtBorderPixels) * pixelSize;
                 backgroundMem = (((schematic.width + backgroundOffset) * tilesize * size) + artWidth) * (((schematic.height + backgroundOffset) * tilesize * size) + artHeight) * 4;
 
-            } else {
+            }else{
                 backgroundMem = ((schematic.width + backgroundOffset) * tilesize * size) * ((schematic.height + backgroundOffset) * tilesize * size) * 4;
             }
 
             var total = schemMem + backgroundMem + shadowMem;
 
-            if (pixelArt && hasPixelArt) {
+            if(pixelArt && hasPixelArt){
                 total += (((schematic.width + pixelArtBorderPixels) * pixelSize) * ((schematic.height + pixelArtBorderPixels) * pixelSize)) * 3;
             }
 
             return total;
-        } else if (pixelArt && hasPixelArt) {
+        }else if(pixelArt && hasPixelArt){
             var schemWidth = schematic.width * tilesize * size;
             var schemHeight = schematic.height * tilesize * size;
 
@@ -229,17 +229,17 @@ public class Schematic {
             var artHeight = (schematic.height + pixelArtBorderPixels) * pixelSize;
 
             var schemMem = schemWidth * schemHeight * 4;
-            var artMem = artWidth * artHeight * 3;
+            var artMem = artWidth * artHeight * 4;
 
             var renderedMem = ((schemWidth + artWidth) * (schemHeight)) * 4;
 
             return schemMem + artMem + renderedMem;
-        } else {
+        }else{
             return ((long)schematic.width * tilesize * size) * ((long)schematic.height * tilesize * size) * 4;
         }
     }
 
-    private void init() {
+    private void init(){
         long start = System.currentTimeMillis();
         Version.enabled = false;
         Vars.content = new ContentLoader();
@@ -302,7 +302,7 @@ public class Schematic {
                 width *= size;
                 height *= size;
 
-                y = currentImage.getHeight() - (y + height/2f) - height/2f;
+                y = currentImage.getHeight() - (y + height / 2f) - height / 2f;
 
                 AffineTransform at = new AffineTransform();
                 at.translate(x, y);
@@ -342,8 +342,8 @@ public class Schematic {
         long end = System.currentTimeMillis();
         loadTime = end - start;
         System.out.printf("Time to load %d.%ds%n",
-            TimeUnit.MILLISECONDS.toSeconds(loadTime),
-            loadTime - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(loadTime))
+        TimeUnit.MILLISECONDS.toSeconds(loadTime),
+        loadTime - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(loadTime))
         );
     }
 
@@ -376,11 +376,17 @@ public class Schematic {
     }
 
     private BufferedImage getPixelArt(Seq<BuildPlan> plans, int pixelSize, int bgSize) {
-        BufferedImage pixelArt = new BufferedImage((schematic.width + bgSize) * pixelSize, (schematic.height + bgSize) * pixelSize, BufferedImage.TYPE_INT_RGB);
+        return getPixelArt(plans, pixelSize, bgSize, false);
+    }
+
+    private BufferedImage getPixelArt(Seq<BuildPlan> plans, int pixelSize, int bgSize, boolean noBg) {
+        BufferedImage pixelArt = new BufferedImage((schematic.width + bgSize) * pixelSize, (schematic.height + bgSize) * pixelSize, noBg ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB);
         var g = pixelArt.createGraphics();
 
-        g.setColor(awtColor(Pal.darkerMetal));
-        g.fillRect(0, 0, pixelArt.getWidth(), pixelArt.getHeight());
+        if (!noBg) {
+            g.setColor(awtColor(Pal.darkerMetal));
+            g.fillRect(0, 0, pixelArt.getWidth(), pixelArt.getHeight());
+        }
 
         for(int x = 0; x < schematic.width; x++){
             for(int y = 0; y < schematic.height; y++){
