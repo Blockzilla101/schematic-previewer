@@ -1,7 +1,7 @@
 Generates a preview for a mindustry schematic, along with printing other stuff about the map.
 
 #### Usage
-- `previewer.jar <Path|Base64> [Background=false] [Background Offset=32] [Border Color=gray] [Create Image=true]`
+- `previewer.jar <Path|Base64> [Background=false] [Background Offset=32] [Border Color=gray] [Create Image=true] [Create Pixel Art=false]`
 - Arguments are positional
 
 #### Compiling
