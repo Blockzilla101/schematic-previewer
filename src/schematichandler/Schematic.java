@@ -18,6 +18,8 @@ import mindustry.core.*;
 import mindustry.ctype.*;
 import mindustry.entities.units.*;
 import mindustry.game.*;
+import mindustry.graphics.*;
+import mindustry.type.*;
 import mindustry.world.*;
 import mindustry.world.blocks.distribution.*;
 
@@ -40,39 +42,48 @@ public class Schematic {
     private final float bridgeOpacity = 0.75f;
     private ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
 
+    public int pixelSize = 4;
+    public int pixelArtBorderPixels = 4; // top & bottom, left & right
     public int size = 4;
-    public int tileSize = 8;
     public long loadTime = 0;
 
-    Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage) throws IOException {
+    private Seq<String> pixelArtBlocks = Seq.with("sorter", "inverted-sorter", "item-source");
+    private boolean hasPixelArt = true;
+
+    Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage, boolean pixelArt) throws IOException{
         init();
-        if (Fi.get(path).exists()) {
+        if(Fi.get(path).exists()){
             schematic = Schematics.read(Fi.get(path));
-        } else if (path.startsWith(header)) {
-            try {
+        }else if(path.startsWith(header)){
+            try{
                 schematic = Schematics.readBase64(path);
-            } catch(RuntimeException e) {
+            }catch(RuntimeException e){
                 e.printStackTrace();
                 throw new IOException("Either the schematic is inaccessible or provided base64 is invalid");
             }
-        } else {
+        }else{
             throw new IOException("That schematic is no where to be found");
         }
 
-        if (!createImage) return;
+        if(!createImage) return;
 
-        while(getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory() && size > 1) size--;
-        // while(getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory() && tileSize > 1) tileSize--;
+        Seq<BuildPlan> requests = schematic.tiles.map(t -> new BuildPlan(t.x, t.y, t.rotation, t.block, t.config));
+        if(pixelArt){
+            requests.each(req -> {
+                if(hasPixelArt && !pixelArtBlocks.contains(req.block.name)) hasPixelArt = false;
+            });
+        }
 
-        if (getMemUsed(drawBackground, backgroundOffset) > Runtime.getRuntime().freeMemory()) {
+        while(getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory() && size > 1) size--;
+
+        if (getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory()) {
             throw new RuntimeException("Schematic is way to big to render even at a reduced size");
         }
 
-        System.out.printf("Will be rendering at size %d and tilesize %d\n\n", size, tileSize);
-        var schematicImage = new BufferedImage(schematic.width * size * tileSize, schematic.height * size * tileSize, BufferedImage.TYPE_INT_ARGB);
+        System.out.printf("Will be rendering at %f the size\n\n", size / 4f);
+        var schematicImage = new BufferedImage(schematic.width * size * tilesize, schematic.height * size * tilesize, BufferedImage.TYPE_INT_ARGB);
 
         Draw.reset();
-        Seq<BuildPlan> requests = schematic.tiles.map(t -> new BuildPlan(t.x, t.y, t.rotation, t.block, t.config));
         currentImage = schematicImage;
         currentGraphics = schematicImage.createGraphics();
         requests.each(req -> {
@@ -100,6 +111,46 @@ public class Schematic {
             int width = schematicImage.getWidth() + (backgroundOffset * 2);
             int height = schematicImage.getHeight() + (backgroundOffset * 2);
 
+            int schematicOffsetX = backgroundOffset;
+            int schematicOffsetY = backgroundOffset;
+
+            BufferedImage art = null;
+
+            if (pixelArt && hasPixelArt) {
+                art = getPixelArt(requests, pixelSize, pixelArtBorderPixels);
+                if (art.getHeight() <= art.getWidth()) {
+                    width -= backgroundOffset * 2;
+                    height -= 20;
+
+                    width += art.getWidth() + 5;
+                    height += art.getHeight();
+
+                    schematicOffsetX = art.getWidth() / 3;
+                    schematicOffsetY = art.getHeight() + 20;
+                }
+
+//                if (art.getHeight() == art.getWidth()) {
+//                    width -= backgroundOffset;
+//                    height -= backgroundOffset;
+//
+//                    width += art.getWidth() + 5;
+//                    height += art.getHeight() + 5;
+//
+//                    schematicOffsetX = 20;
+//                    schematicOffsetY = art.getHeight() + 20;
+//                }
+
+                if (art.getHeight() > art.getWidth()) {
+                    width -= backgroundOffset;
+                    height -= 10;
+
+                    width += art.getWidth() + 20;
+
+                    schematicOffsetX = 25;
+                    schematicOffsetY = 25;
+                }
+            }
+
             var factory = new ShadowFactory();
             factory.setRenderingHint(ShadowFactory.KEY_BLUR_QUALITY, ShadowFactory.VALUE_BLUR_QUALITY_HIGH);
             factory.setColor(java.awt.Color.black);
@@ -115,26 +166,50 @@ public class Schematic {
             currentImage = withBackground;
 
             currentGraphics.drawImage(background, 0, 0, null);
-            currentGraphics.drawImage(shadow, backgroundOffset - 24, backgroundOffset - 24, null);
-            currentGraphics.drawImage(schematicImage, backgroundOffset, backgroundOffset, null);
+            currentGraphics.drawImage(shadow, schematicOffsetX - 24, schematicOffsetY - 24, null);
+            currentGraphics.drawImage(schematicImage, schematicOffsetX, schematicOffsetY, null);
 
             currentGraphics.setColor(borderColor);
             currentGraphics.setStroke(new BasicStroke(4f));
             currentGraphics.drawRect(2, 2, width - 4, height - 4);
+
+            if (pixelArt && hasPixelArt) {
+                currentGraphics.drawImage(art, currentImage.getWidth() - art.getWidth() - 4, 4, null);
+
+                currentGraphics.setColor(borderColor);
+                currentGraphics.setStroke(new BasicStroke(2f));
+                currentGraphics.drawRect(currentImage.getWidth() - art.getWidth() - 4 - 1, 3, art.getWidth() + 2, art.getHeight() + 2);
+            }
 
             this.image = withBackground;
         }
         currentGraphics.dispose();
     }
 
-    private long getMemUsed(boolean drawBackground, int backgroundOffset) {
+    private long getMemUsed(boolean drawBackground, int backgroundOffset, boolean pixelArt) {
         if (drawBackground) {
-            var schemMem = (schematic.width * tileSize * size) * (schematic.height * tileSize * size) * 4;
-            var backgroundMem = ((schematic.width + backgroundOffset) * tileSize * size) * ((schematic.height + backgroundOffset) * tileSize * size) * 4;
+            var schemMem = (schematic.width * tilesize * size) * (schematic.height * tilesize * size) * 4;
+            var backgroundMem = 0;
             var shadowMem = schemMem * 2;
-            return schemMem + backgroundMem + shadowMem;
+
+            if (pixelArt && hasPixelArt) {
+                var artWidth = (schematic.width + pixelArtBorderPixels) * pixelSize;
+                var artHeight = (schematic.height + pixelArtBorderPixels) * pixelSize;
+                backgroundMem = (((schematic.width + backgroundOffset) * tilesize * size) + artWidth) * (((schematic.height + backgroundOffset) * tilesize * size) + artHeight) * 4;
+
+            } else {
+                backgroundMem = ((schematic.width + backgroundOffset) * tilesize * size) * ((schematic.height + backgroundOffset) * tilesize * size) * 4;
+            }
+
+            var total = schemMem + backgroundMem + shadowMem;
+
+            if (pixelArt && hasPixelArt) {
+                total += (((schematic.width + pixelArtBorderPixels) * pixelSize) * ((schematic.height + pixelArtBorderPixels) * pixelSize)) * 3;
+            }
+
+            return total;
         } else {
-            return (schematic.width * tileSize * size) * (schematic.height * tileSize * size) * 4;
+            return ((long)schematic.width * tilesize * size) * ((long)schematic.height * tilesize * size) * 4;
         }
     }
 
@@ -272,6 +347,35 @@ public class Schematic {
 
         g.dispose();
         return resized;
+    }
+
+    private BufferedImage getPixelArt(Seq<BuildPlan> plans, int pixelSize, int bgSize) {
+        BufferedImage pixelArt = new BufferedImage((schematic.width + bgSize) * pixelSize, (schematic.height + bgSize) * pixelSize, BufferedImage.TYPE_INT_RGB);
+        var g = pixelArt.createGraphics();
+
+        g.setColor(awtColor(Pal.darkerMetal));
+        g.fillRect(0, 0, pixelArt.getWidth(), pixelArt.getHeight());
+
+        for(int x = 0; x < schematic.width; x++){
+            for(int y = 0; y < schematic.height; y++){
+                var finalX = x;
+                var finalY = y;
+                var plan = plans.find(p -> p.x == finalX && p.y == finalY);
+
+                if (plan != null && plan.config != null) {
+                    g.setColor(awtColor(((Item)plan.config).color));
+                    g.fillRect((x + (bgSize / 2)) * pixelSize, pixelArt.getHeight() - pixelSize - ((y + (bgSize / 2)) * pixelSize), pixelSize, pixelSize);
+                }
+            }
+        }
+
+        g.dispose();
+        return pixelArt;
+    }
+
+
+    private java.awt.Color awtColor(Color col) {
+        return new java.awt.Color(col.r, col.g, col.b, col.a);
     }
 
     static class ImageData implements TextureData{

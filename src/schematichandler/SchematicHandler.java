@@ -10,7 +10,7 @@ import java.util.concurrent.*;
 public class SchematicHandler {
     public static void main(String[] args ){
         if (args.length == 0) {
-            System.out.println("Usage: previewer.jar <Path> [Background=false] [Background Offset=32] [Border Color=Gray] [Create Image=true]");
+            System.out.println("Usage: previewer.jar <Path> [Background=false] [Background Offset=32] [Border Color=Gray] [Create Image=true] [Pixel Art=false]");
             return;
         }
 
@@ -24,6 +24,7 @@ public class SchematicHandler {
         var offset = args.length >= 3 ? Strings.parseInt(args[2]) : 32;
         var color = args.length >= 4 ? fromHex(args[3]) : Color.GRAY;
         var createImage = args.length < 5 || args[4].equals("true");
+        var pixelArt = args.length < 6 || args[5].equals("true");
 
         try {
             if (path.startsWith(Schematic.header)) {
@@ -34,7 +35,7 @@ public class SchematicHandler {
             if (!createImage) System.out.println("Not creating image");
             long start = System.currentTimeMillis();
 
-            var schem = new Schematic(path, background, offset, color, createImage);
+            var schem = new Schematic(path, background, offset, color, createImage, pixelArt);
             if (createImage) {
                 if (path.startsWith(Schematic.header)) {
                     String name = Time.millis() + ".png";
