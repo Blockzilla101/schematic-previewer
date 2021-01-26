@@ -182,6 +182,19 @@ public class Schematic {
             }
 
             this.image = withBackground;
+        } else {
+            if (pixelArt && hasPixelArt) {
+                var art = getPixelArt(requests, pixelSize, pixelArtBorderPixels);
+                var full = new BufferedImage(currentImage.getWidth() + art.getWidth(), currentImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
+
+                currentGraphics = full.createGraphics();
+
+                currentGraphics.drawImage(schematicImage, 0, 0, null);
+                currentGraphics.drawImage(art, schematicImage.getWidth(), 0, null);
+
+                currentImage = full;
+                image = full;
+            }
         }
         currentGraphics.dispose();
     }
@@ -208,6 +221,19 @@ public class Schematic {
             }
 
             return total;
+        } else if (pixelArt && hasPixelArt) {
+            var schemWidth = schematic.width * tilesize * size;
+            var schemHeight = schematic.height * tilesize * size;
+
+            var artWidth = (schematic.width + pixelArtBorderPixels) * pixelSize;
+            var artHeight = (schematic.height + pixelArtBorderPixels) * pixelSize;
+
+            var schemMem = schemWidth * schemHeight * 4;
+            var artMem = artWidth * artHeight * 3;
+
+            var renderedMem = ((schemWidth + artWidth) * (schemHeight)) * 4;
+
+            return schemMem + artMem + renderedMem;
         } else {
             return ((long)schematic.width * tilesize * size) * ((long)schematic.height * tilesize * size) * 4;
         }
