@@ -80,7 +80,7 @@ public class Schematic{
             throw new RuntimeException("Schematic is way to big to render even at a reduced size");
         }
 
-        System.out.printf("Will be rendering at %f the size\n\n", size / 4f);
+        System.out.printf("Will be rendering at %s the size\n\n", Float.toString(size / 4f));
         var schematicImage = new BufferedImage(schematic.width * size * tilesize, schematic.height * size * tilesize, BufferedImage.TYPE_INT_ARGB);
 
         Draw.reset();
