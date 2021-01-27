@@ -22,6 +22,7 @@ import mindustry.graphics.*;
 import mindustry.type.*;
 import mindustry.world.*;
 import mindustry.world.blocks.distribution.*;
+import mindustry.world.blocks.power.*;
 
 import javax.imageio.*;
 import java.awt.*;
@@ -36,6 +37,7 @@ public class Schematic{
     public static final String header = schematicBaseStart;
     public BufferedImage image;
     public mindustry.game.Schematic schematic;
+    public long batteryStorage = 0;
 
     private BufferedImage currentImage;
     private Graphics2D currentGraphics;
@@ -65,14 +67,15 @@ public class Schematic{
             throw new IOException("That schematic is no where to be found");
         }
 
-        if(!createImage) return;
-
         Seq<BuildPlan> requests = schematic.tiles.map(t -> new BuildPlan(t.x, t.y, t.rotation, t.block, t.config));
-        if(pixelArt){
-            requests.each(req -> {
-                if(hasPixelArt && !pixelArtBlocks.contains(req.block.name)) hasPixelArt = false;
-            });
-        }
+        requests.each(req -> {
+            if(pixelArt && hasPixelArt && !pixelArtBlocks.contains(req.block.name)) hasPixelArt = false;
+            if (req.block instanceof Battery) {
+                batteryStorage += req.block.consumes.getPower().capacity;
+            }
+        });
+
+        if(!createImage) return;
 
         while(getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory() && size > 1) size--;
 
@@ -80,7 +83,7 @@ public class Schematic{
             throw new RuntimeException("Schematic is way to big to render even at a reduced size");
         }
 
-        System.out.printf("Will be rendering at %s the size\n\n", Float.toString(size / 4f));
+        System.out.printf("Will be rendering at %s:1 the size\n\n", Float.toString(size / 4f));
         var schematicImage = new BufferedImage(schematic.width * size * tilesize, schematic.height * size * tilesize, BufferedImage.TYPE_INT_ARGB);
 
         Draw.reset();

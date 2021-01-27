@@ -61,6 +61,7 @@ public class SchematicHandler {
             System.out.println(">numBlocks=" + schem.schematic.tiles.size);
             System.out.println(">powerProd=" + schem.schematic.powerProduction() * 60f);
             System.out.println(">powerUsed=" + schem.schematic.powerConsumption() * 60f);
+            System.out.println(">batteryStorage=" + schem.batteryStorage);
             System.out.println(">width=" + schem.schematic.width);
             System.out.println(">height=" + schem.schematic.height);
             System.out.println();
