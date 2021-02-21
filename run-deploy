@@ -1,6 +1,11 @@
-#!/usr/bin/env sh
+#!/usr/bin/bash
 
 ./gradlew dist --no-daemon -q
+
+if [[ ! $? == '0' ]]; then
+    echo "Build Failed"
+    exit 1
+fi
 
 cp  ./build/libs/previewer.jar ../Botzilla/schematic-previewer.jar
 

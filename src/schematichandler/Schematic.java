@@ -264,7 +264,7 @@ public class Schematic{
         TextureAtlasData data = new TextureAtlasData(Core.files.internal("sprites/sprites.atlas"), Core.files.internal("sprites"), false);
         Core.atlas = new TextureAtlas();
 
-        ObjectMap<Page, BufferedImage> images = new ObjectMap<>();
+        ObjectMap<AtlasPage, BufferedImage> images = new ObjectMap<>();
 
         data.getPages().each(page -> {
             try{
@@ -422,7 +422,7 @@ public class Schematic{
 
         @Override
         public TextureDataType getType(){
-            return TextureDataType.Custom;
+            return TextureDataType.custom;
         }
 
         @Override
