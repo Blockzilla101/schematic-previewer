@@ -1,0 +1,13 @@
+{
+  "name": "schematic-previewer",
+  "version": "0.0.0",
+  "description": "javascript version of schematic previewer",
+  "main": "index.js",
+  "repository": "git@github.com:Blockzilla101/schematic-previewer.git",
+  "author": "Blockzilla101",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "canvas": "^2.6.1"
+  }
+}
