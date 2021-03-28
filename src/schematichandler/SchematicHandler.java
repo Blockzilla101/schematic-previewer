@@ -1,86 +1,146 @@
 package schematichandler;
 
+import arc.files.*;
+import arc.struct.*;
 import arc.util.*;
+import com.beust.jcommander.*;
+import com.google.gson.*;
 
 import javax.imageio.*;
 import java.awt.*;
 import java.io.*;
+import java.util.*;
 import java.util.concurrent.*;
 
 public class SchematicHandler {
-    public static void main(String[] args ){
-        if (args.length == 0) {
-            System.out.println("Usage: previewer.jar <Path> [Background=false] [Background Offset=32] [Border Color=Gray] [Create Image=true] [Pixel Art=false]");
-            return;
+    public static void main(String[] args) {
+        SchematicOptions parsedArgs = null;
+        try {
+            parsedArgs = parseArgs(args);
+            if (parsedArgs.bulk != null) parseBulk(Fi.get(parsedArgs.bulk).readString());
+        } catch(ParameterException e) {
+            System.out.println(e.getMessage());
+            SchematicOptions.parser.usage();
+            System.exit(1);
         }
 
-        if (args.length >= 3 && !Strings.canParseInt(args[2])) {
-            System.out.println(args[2] + " is not a number");
-            return;
-        }
-
-        var path = args[0];
-        var background = args.length >= 2 && args[1].equals("true");
-        var offset = args.length >= 3 ? Strings.parseInt(args[2]) : 32;
-        var color = args.length >= 4 ? fromHex(args[3]) : Color.GRAY;
-        var createImage = args.length < 5 || args[4].equals("true");
-        var pixelArt = args.length >= 6 && args[5].equals("true");
+        System.out.print("Loading Sprites...");
+        Schematic.init();
+        System.out.println("Done");
 
         try {
-            if (path.startsWith(Schematic.header)) {
-                System.out.println("Reading base64 schematic");
-            } else {
-                System.out.println("Reading schematic " + path);
-            }
-            if (!createImage) System.out.println("Not creating image");
             long start = System.currentTimeMillis();
-
-            var schem = new Schematic(path, background, offset, color, createImage, pixelArt);
-            if (createImage) {
-                if (path.startsWith(Schematic.header)) {
-                    String name = Time.millis() + ".png";
-                    ImageIO.write(schem.image, "png", new File(name));
-                    System.out.println("Wrote png to " + name);
+            if (parsedArgs.bulk == null) {
+                var schem = new Schematic(parsedArgs.schematic, parsedArgs.background, parsedArgs.backgroundOffset, fromHex(parsedArgs.borderColor), parsedArgs.createPreview, parsedArgs.pixelArt);
+                if (parsedArgs.createPreview) ImageIO.write(schem.image, "png", new File(parsedArgs.outPath));
+                if (parsedArgs.dataPath == null) {
+                    System.out.println(schem.toString(">"));
                 } else {
-                    ImageIO.write(schem.image, "png", new File(path.replaceAll("\\.msch$", ".png")));
+                    var map = schem.toMap();
+                    if (parsedArgs.createPreview) map.put("previewPath", parsedArgs.outPath);
+                    Fi.get(parsedArgs.dataPath).writeString(new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create().toJson(map) + "\n");
                 }
-            }
+            } else {
+                var bulk = parseBulk(Fi.get(parsedArgs.bulk).readString());
+                System.out.println("Parsing " + bulk.size + " schematics");
+                var gson = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
+                var done = new Seq<HashMap<String, Object>>();
 
+                for(var opts: bulk) {
+                    var schem = new Schematic(opts.schematic, opts.background, opts.backgroundOffset, fromHex(opts.borderColor), opts.createPreview, opts.pixelArt);
+                    var previewPath = "schem-preview-" + Time.millis() + ".png";
+
+                    if (opts.createPreview) ImageIO.write(schem.image, "png", new File(previewPath));
+
+                    var map = schem.toMap();
+                    if (opts.createPreview) map.put("previewPath", previewPath);
+                    done.add(map);
+                }
+
+                Fi.get(parsedArgs.dataPath).writeString(gson.toJson(done.toArray()) + "\n");
+            }
             long end = System.currentTimeMillis();
 
-            System.out.println(">name=" + removeNewlines(schem.schematic.name()));
-            System.out.println(">description=" + removeNewlines(schem.schematic.description()));
-            if (schem.schematic.requirements().toSeq().size > 0) {
-                var temp = new StringBuilder(">requirements={ ");
-                schem.schematic.requirements().forEach(item -> temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", "));
-                System.out.println(temp.substring(0, temp.length() - 2) + " }");
-            } else {
-                System.out.println(">requirements={ }");
-            }
-
-            System.out.println(">numBlocks=" + schem.schematic.tiles.size);
-            System.out.println(">powerProd=" + schem.schematic.powerProduction() * 60f);
-            System.out.println(">powerUsed=" + schem.schematic.powerConsumption() * 60f);
-            System.out.println(">batteryStorage=" + schem.batteryStorage);
-            System.out.println(">width=" + schem.schematic.width);
-            System.out.println(">height=" + schem.schematic.height);
+            long genTime = end - start;
+            long total = genTime + Schematic.timeToLoad;
+            System.out.printf("Total Time %d.%ds | Preview %d.%ds | Load %d.%ds",
+                TimeUnit.MILLISECONDS.toSeconds(total), total - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(total)),
+                TimeUnit.MILLISECONDS.toSeconds(genTime), genTime - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(genTime)),
+                TimeUnit.MILLISECONDS.toSeconds(Schematic.timeToLoad), Schematic.timeToLoad - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(Schematic.timeToLoad))
+            );
             System.out.println();
-
-            long elapsed = end - start - schem.loadTime; // TODO: combine into one logged line
-            System.out.printf("Took %d.%ds%n",
-                TimeUnit.MILLISECONDS.toSeconds(elapsed),
-                elapsed - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(elapsed))
-            );
-            long totalElapsed = end - start;
-            System.out.printf("Total Time %d.%ds%n",
-                TimeUnit.MILLISECONDS.toSeconds(totalElapsed),
-                totalElapsed - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(totalElapsed))
-            );
 
         } catch(Exception e) {
             e.printStackTrace();
             System.exit(1);
         }
+    }
+
+    public static Seq<SchematicOptions> parseBulk(String bulk) {
+        var parsed = new Seq<SchematicOptions>();
+        var lines = bulk.split("\r?\n");
+        var hadError = false;
+
+        for(int i = 0; i < lines.length; i++) {
+            try {
+                if (lines[i].length() > 0) parsed.add(parseArgs(lines[i].split(" "), true));
+            } catch(ParameterException e) {
+                System.err.printf("Bulk Link[%d]: %s\n", i, e.getMessage());
+                hadError = true;
+            }
+        }
+
+        if (hadError) {
+            SchematicOptions.parser.usage();
+            System.exit(1);
+        }
+
+        return parsed;
+    }
+
+    public static SchematicOptions parseArgs(String[] args) throws ParameterException {
+        return parseArgs(args, false);
+    }
+
+    public static SchematicOptions parseArgs(String[] args, boolean inBulk) throws ParameterException {
+        var parsed = new SchematicOptions();
+        SchematicOptions.parser = JCommander.newBuilder().addObject(parsed).build();
+        SchematicOptions.parser.parse(args);
+        if (parsed.bulk == null) {
+            if (parsed.schemFiles.size() == 0) {
+                throw new ParameterException("Missing schematic file");
+            }
+            parsed.schematic = parsed.schemFiles.get(0);
+            if (parsed.outPath == null && parsed.createPreview && !inBulk) {
+                throw new ParameterException("The following option is required: [-o, --out, --output]");
+            }
+            if (parsed.createPreview && parsed.pixelArt && !parsed.background) {
+                throw new ParameterException("Pixel art option needs background option to be set to true");
+            }
+            if (parsed.backgroundOffset < 0) {
+                throw new ParameterException("Background offset cant be smaller then zero");
+            }
+            if (!Fi.get(parsed.schematic).exists() && !parsed.schematic.startsWith(Schematic.header)) {
+                throw new ParameterException("Schematic is not a valid path and not base64");
+            }
+            if (inBulk && parsed.dataPath != null) {
+                throw new ParameterException("Data path cannot be used in bulk file");
+            }
+            if (inBulk && parsed.outPath != null) {
+                throw new ParameterException("Output path cannot be used in bulk file");
+            }
+        } else {
+            if (inBulk) {
+                throw new ParameterException("Bulk option cannot be used in bulk file");
+            }
+            if (!Fi.get(parsed.bulk).exists()) {
+                throw new ParameterException("Path to bulk file is invalid");
+            }
+            if (parsed.dataPath == null) {
+                throw new ParameterException("Data path is required in bulk mode");
+            }
+        }
+        return parsed;
     }
 
     public static String removeNewlines(String str) {
@@ -92,5 +152,16 @@ public class SchematicHandler {
         Integer.valueOf( colorStr.substring( 1, 3 ), 16 ),
         Integer.valueOf( colorStr.substring( 3, 5 ), 16 ),
         Integer.valueOf( colorStr.substring( 5, 7 ), 16 ) );
+    }
+
+    public static class ColorValidator implements IValueValidator<String> {
+        @Override
+        public void validate(String name, String value) throws ParameterException {
+            try {
+                fromHex(value);
+            } catch(Exception ignored) {
+                throw new ParameterException("Parameter " + name + " is not a valid hex color");
+            }
+        }
     }
 }
