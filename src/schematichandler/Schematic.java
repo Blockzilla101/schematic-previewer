@@ -67,7 +67,10 @@ public class Schematic{
             throw new IOException("That schematic is no where to be found");
         }
 
+        if(schematic.tiles.size == 0) throw new RuntimeException("Schematic has no blocks");
+
         Seq<BuildPlan> requests = schematic.tiles.map(t -> new BuildPlan(t.x, t.y, t.rotation, t.block, t.config));
+        hasPixelArt = pixelArt;
         requests.each(req -> {
             if(pixelArt && hasPixelArt && !pixelArtBlocks.contains(req.block.name)) hasPixelArt = false;
             if (req.block instanceof Battery) {
