@@ -1,4 +1,4 @@
-Generates a preview for a mindustry schematic, along with printing other stuff about the map.
+Generates a preview for a mindustry schematic, along with printing other stuff about the schematic.
 
 #### Usage
 - `previewer.jar [options] schematic.msch`
