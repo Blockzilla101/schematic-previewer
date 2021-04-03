@@ -29,7 +29,7 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.awt.image.*;
 import java.io.*;
-import java.util.concurrent.*;
+import java.util.*;
 
 import static mindustry.Vars.*;
 
@@ -39,21 +39,24 @@ public class Schematic{
     public mindustry.game.Schematic schematic;
     public long batteryStorage = 0;
 
-    private BufferedImage currentImage;
-    private Graphics2D currentGraphics;
-    private final float bridgeOpacity = 0.75f;
-    private ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
+    static private BufferedImage currentImage;
+    static private Graphics2D currentGraphics;
+    static private final float bridgeOpacity = 0.75f;
+    static private final ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
 
     public int pixelSize = 4;
     public int pixelArtBorderPixels = 4; // top & bottom, left & right
-    public int size = 4;
-    public long loadTime = 0;
+    public int renderSize = size;
 
-    private Seq<String> pixelArtBlocks = Seq.with("sorter", "inverted-sorter", "item-source");
-    private boolean hasPixelArt = true;
+    final private Seq<String> pixelArtBlocks = Seq.with("sorter", "inverted-sorter", "item-source");
+    private boolean hasPixelArt;
+
+    static private boolean inited = false;
+    static private int tempSize = 4;
+    static public long timeToLoad;
+    static public final int size = 4;
 
     Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage, boolean pixelArt) throws IOException{
-        init();
         if(Fi.get(path).exists()){
             schematic = Schematics.read(Fi.get(path));
         }else if(path.startsWith(header)){
@@ -80,14 +83,16 @@ public class Schematic{
 
         if(!createImage) return;
 
-        while(getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory() && size > 1) size--;
+        tempSize = 4;
+        while(getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory() && tempSize > 1) tempSize--;
+        renderSize = tempSize;
 
         if(getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory()){
             throw new RuntimeException("Schematic is way to big to render even at a reduced size");
         }
 
-        System.out.printf("Will be rendering at %s:1 the size\n\n", Float.toString(size / 4f));
-        var schematicImage = new BufferedImage(schematic.width * size * tilesize, schematic.height * size * tilesize, BufferedImage.TYPE_INT_ARGB);
+//        System.out.printf("Will be rendering at %s:1 the size\n", String.format("%.2f", size / 4f).replace(".00", ""));
+        var schematicImage = new BufferedImage(schematic.width * tempSize * tilesize, schematic.height * tempSize * tilesize, BufferedImage.TYPE_INT_ARGB);
 
         Draw.reset();
         currentImage = schematicImage;
@@ -207,17 +212,17 @@ public class Schematic{
 
     private long getMemUsed(boolean drawBackground, int backgroundOffset, boolean pixelArt){
         if(drawBackground){
-            var schemMem = (schematic.width * tilesize * size) * (schematic.height * tilesize * size) * 4;
+            var schemMem = (schematic.width * tilesize * tempSize) * (schematic.height * tilesize * tempSize) * 4;
             var backgroundMem = 0;
             var shadowMem = schemMem * 2;
 
             if(pixelArt && hasPixelArt){
                 var artWidth = (schematic.width + pixelArtBorderPixels) * pixelSize;
                 var artHeight = (schematic.height + pixelArtBorderPixels) * pixelSize;
-                backgroundMem = (((schematic.width + backgroundOffset) * tilesize * size) + artWidth) * (((schematic.height + backgroundOffset) * tilesize * size) + artHeight) * 4;
+                backgroundMem = (((schematic.width + backgroundOffset) * tilesize * tempSize) + artWidth) * (((schematic.height + backgroundOffset) * tilesize * tempSize) + artHeight) * 4;
 
             }else{
-                backgroundMem = ((schematic.width + backgroundOffset) * tilesize * size) * ((schematic.height + backgroundOffset) * tilesize * size) * 4;
+                backgroundMem = ((schematic.width + backgroundOffset) * tilesize * tempSize) * ((schematic.height + backgroundOffset) * tilesize * tempSize) * 4;
             }
 
             var total = schemMem + backgroundMem + shadowMem;
@@ -228,8 +233,8 @@ public class Schematic{
 
             return total;
         }else if(pixelArt && hasPixelArt){
-            var schemWidth = schematic.width * tilesize * size;
-            var schemHeight = schematic.height * tilesize * size;
+            var schemWidth = schematic.width * tilesize * tempSize;
+            var schemHeight = schematic.height * tilesize * tempSize;
 
             var artWidth = (schematic.width + pixelArtBorderPixels) * pixelSize;
             var artHeight = (schematic.height + pixelArtBorderPixels) * pixelSize;
@@ -241,12 +246,54 @@ public class Schematic{
 
             return schemMem + artMem + renderedMem;
         }else{
-            return ((long)schematic.width * tilesize * size) * ((long)schematic.height * tilesize * size) * 4;
+            return ((long)schematic.width * tilesize * tempSize) * ((long)schematic.height * tilesize * tempSize) * 4;
         }
     }
 
-    private void init(){
+    public String toString(String prefix){
+        var sb = new StringBuilder();
+        sb.append(prefix).append("name=").append(SchematicHandler.removeNewlines(schematic.name())).append('\n');
+        sb.append(prefix).append("description=").append(SchematicHandler.removeNewlines(schematic.description())).append('\n');
+        if (schematic.requirements().toSeq().size > 0) {
+            var temp = new StringBuilder(prefix + "requirements={ ");
+            schematic.requirements().forEach(item -> temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", "));
+            sb.append(temp.substring(0, temp.length() - 2)).append(" }\n");
+        } else {
+            sb.append(prefix).append("requirements={ }").append('\n');
+        }
+        sb.append(prefix).append("numBlocks=").append(schematic.tiles.size).append('\n');
+        sb.append(prefix).append("powerProd=").append(schematic.powerProduction() * 60f).append('\n');
+        sb.append(prefix).append("powerUsed=").append(schematic.powerConsumption() * 60f).append('\n');
+        sb.append(prefix).append("batteryStorage=").append(batteryStorage).append('\n');
+        sb.append(prefix).append("width=").append(schematic.width).append('\n');
+        sb.append(prefix).append("height=").append(schematic.height).append('\n');
+        return sb.toString();
+    }
+
+    public HashMap<String, Object> toMap() {
+        var map = new HashMap<String, Object>();
+
+        var req = new HashMap<String, Integer>();
+        schematic.requirements().forEach(item -> req.put(item.item.name, item.amount));
+
+        map.put("name", schematic.name());
+        map.put("description", schematic.description());
+        map.put("requirements", req);
+        map.put("numBlocks", schematic.tiles.size);
+        map.put("powerProd", schematic.powerProduction() * 60f);
+        map.put("powerUsed", schematic.powerConsumption() * 60f);
+        map.put("batteryStorage", batteryStorage);
+        map.put("width", schematic.width);
+        map.put("height", schematic.height);
+        map.put("renderSize", renderSize);
+
+        return map;
+    }
+
+    static public void init(){
+        if (inited) return;
         long start = System.currentTimeMillis();
+
         Version.enabled = false;
         Vars.content = new ContentLoader();
         Vars.content.createBaseContent();
@@ -303,16 +350,16 @@ public class Schematic{
                 x += 4;
                 y += 4;
 
-                x *= size;
-                y *= size;
-                width *= size;
-                height *= size;
+                x *= tempSize;
+                y *= tempSize;
+                width *= tempSize;
+                height *= tempSize;
 
                 y = currentImage.getHeight() - (y + height / 2f) - height / 2f;
 
                 AffineTransform at = new AffineTransform();
                 at.translate(x, y);
-                at.rotate(-rotation * Mathf.degRad, originX * size, originY * size);
+                at.rotate(-rotation * Mathf.degRad, originX * tempSize, originY * tempSize);
 
                 currentGraphics.setTransform(at);
                 BufferedImage image = regions.get(((AtlasRegion)region).name);
@@ -345,15 +392,11 @@ public class Schematic{
             }
         };
 
-        long end = System.currentTimeMillis();
-        loadTime = end - start;
-        System.out.printf("Time to load %d.%ds%n",
-        TimeUnit.MILLISECONDS.toSeconds(loadTime),
-        loadTime - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(loadTime))
-        );
+        timeToLoad = System.currentTimeMillis() - start;
+        inited = true;
     }
 
-    private BufferedImage tint(BufferedImage image, Color color){
+    static private BufferedImage tint(BufferedImage image, Color color){
         BufferedImage copy = new BufferedImage(image.getWidth(), image.getHeight(), image.getType());
         Color tmp = new Color();
         for(int x = 0; x < copy.getWidth(); x++){
