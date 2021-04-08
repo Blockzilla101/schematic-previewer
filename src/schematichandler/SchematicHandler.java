@@ -47,14 +47,22 @@ public class SchematicHandler {
                 var done = new Seq<HashMap<String, Object>>();
 
                 for(var opts: bulk) {
-                    var schem = new Schematic(opts.schematic, opts.background, opts.backgroundOffset, fromHex(opts.borderColor), opts.createPreview, opts.pixelArt);
-                    var previewPath = "schem-preview-" + Time.millis() + ".png";
+                    try {
+                        var schem = new Schematic(opts.schematic, opts.background, opts.backgroundOffset, fromHex(opts.borderColor), opts.createPreview, opts.pixelArt);
+                        var previewPath = "schem-preview-" + Time.millis() + ".png";
 
-                    if (opts.createPreview) ImageIO.write(schem.image, "png", new File(previewPath));
+                        if (opts.createPreview) ImageIO.write(schem.image, "png", new File(previewPath));
 
-                    var map = schem.toMap();
-                    if (opts.createPreview) map.put("previewPath", previewPath);
-                    done.add(map);
+                        var map = schem.toMap();
+                        map.put("success", true);
+                        if (opts.createPreview) map.put("previewPath", previewPath);
+                        done.add(map);
+                    } catch(Exception e) {
+                        var map = new HashMap<String, Object>();
+                        map.put("success", false);
+                        map.put("message", e.getMessage());
+                        done.add(map);
+                    }
                 }
 
                 Fi.get(parsedArgs.dataPath).writeString(gson.toJson(done.toArray()) + "\n");
