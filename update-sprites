@@ -1,0 +1,17 @@
+#!/usr/bin/bash
+
+MindustryDir="../Mindustry"
+SpriteDir="${MindustryDir}/core/assets/sprites"
+
+[[ ! -d "${MindustryDir}" ]] && echo "Mindustry source code not found" && exit 1
+[[ ! -d "${SpriteDir}" ]] && echo "Sprites not found" && exit 1
+
+[[ -d "./assets/sprites" ]] && rm -rf "./assets/sprites" && echo "Deleted old sprites"
+
+cp -r ${SpriteDir} "./assets"
+
+rm "./assets/sprites/block_colors.png"
+rm "./assets/sprites/space.png"
+rm "./assets/sprites/logo.png"
+
+echo "Sprites updated"
