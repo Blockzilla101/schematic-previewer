@@ -43,6 +43,7 @@ public class Schematic{
     static private Graphics2D currentGraphics;
     static private final float bridgeOpacity = 0.75f;
     static private final ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
+    static private final ObjectMap<String, Fi> imageFiles = new ObjectMap<>();
 
     public int pixelSize = 4;
     public int pixelArtBorderPixels = 4; // top & bottom, left & right
@@ -300,7 +301,7 @@ public class Schematic{
 
         Core.files = new MockFiles();
 
-        for(ContentType type : ContentType.values()){
+        for(ContentType type : ContentType.all){
             for(Content content : Vars.content.getBy(type)){
                 try{
                     content.init();
@@ -311,34 +312,28 @@ public class Schematic{
 
         Vars.state = new GameState();
 
-        TextureAtlasData data = new TextureAtlasData(Core.files.internal("sprites/sprites.atlas"), Core.files.internal("sprites"), false);
+        TextureAtlasData data = new TextureAtlasData(Core.files.internal("sprites/sprites.aatls"), Core.files.internal("sprites"), false);
         Core.atlas = new TextureAtlas();
 
         ObjectMap<AtlasPage, BufferedImage> images = new ObjectMap<>();
 
-        data.getPages().each(page -> {
-            try{
-                BufferedImage image = ImageIO.read(page.textureFile.read());
-                images.put(page, image);
-                page.texture = Texture.createEmpty(new ImageData(image));
-            }catch(Exception e){
-                throw new RuntimeException(e);
+        new Fi("../Mindustry/core/assets-raw/sprites_out").walk(f -> {
+            if(f.extEquals("png")){
+                imageFiles.put(f.nameWithoutExtension(), f);
             }
         });
 
+        data.getPages().each(page -> {
+            page.texture = Texture.createEmpty(null);
+            page.texture.width = (int)page.width;
+            page.texture.height = (int)page.height;
+        });
+
         data.getRegions().each(reg -> {
-            try{
-                BufferedImage image = new BufferedImage(reg.width, reg.height, BufferedImage.TYPE_INT_ARGB);
-                Graphics2D graphics = image.createGraphics();
-
-                graphics.drawImage(images.get(reg.page), 0, 0, reg.width, reg.height, reg.left, reg.top, reg.left + reg.width, reg.top + reg.height, null);
-                ImageRegion region = new ImageRegion(reg.name, reg.page.texture, reg.left, reg.top, image);
-
-                Core.atlas.addRegion(region.name, region);
-                regions.put(region.name, image);
-            }catch(Exception e){
-                e.printStackTrace();
-            }
+            Core.atlas.addRegion(reg.name, new AtlasRegion(reg.page.texture, reg.left, reg.top, reg.width, reg.height){{
+                name = reg.name;
+                texture = reg.page.texture;
+            }});
         });
 
         Lines.useLegacyLine = true;
@@ -362,8 +357,7 @@ public class Schematic{
                 at.rotate(-rotation * Mathf.degRad, originX * tempSize, originY * tempSize);
 
                 currentGraphics.setTransform(at);
-                BufferedImage image = regions.get(((AtlasRegion)region).name);
-
+                BufferedImage image = getImage(((AtlasRegion)region).name);
                 if(!color.equals(Color.white)){
                     image = tint(image, color);
                 }
@@ -381,6 +375,7 @@ public class Schematic{
             for(Content content : Vars.content.getBy(type)){
                 try{
                     content.load();
+                    content.loadIcon();
                 }catch(Throwable ignored){
                 }
             }
@@ -454,84 +449,17 @@ public class Schematic{
         return pixelArt;
     }
 
-
     private java.awt.Color awtColor(Color col) {
         return new java.awt.Color(col.r, col.g, col.b, col.a);
     }
 
-    static class ImageData implements TextureData{
-        final BufferedImage image;
-
-        public ImageData(BufferedImage image){
-            this.image = image;
-        }
-
-        @Override
-        public TextureDataType getType(){
-            return TextureDataType.custom;
-        }
-
-        @Override
-        public boolean isPrepared(){
-            return false;
-        }
-
-        @Override
-        public void prepare(){
-
-        }
-
-        @Override
-        public Pixmap consumePixmap(){
-            return null;
-        }
-
-        @Override
-        public boolean disposePixmap(){
-            return false;
-        }
-
-        @Override
-        public void consumeCustomData(int target){
-
-        }
-
-        @Override
-        public int getWidth(){
-            return image.getWidth();
-        }
-
-        @Override
-        public int getHeight(){
-            return image.getHeight();
-        }
-
-        @Override
-        public Format getFormat(){
-            return Format.rgba8888;
-        }
-
-        @Override
-        public boolean useMipMaps(){
-            return false;
-        }
-
-        @Override
-        public boolean isManaged(){
-            return false;
-        }
-    }
-
-    static class ImageRegion extends AtlasRegion{
-        final BufferedImage image;
-        final int x, y;
-
-        public ImageRegion(String name, Texture texture, int x, int y, BufferedImage image){
-            super(texture, x, y, image.getWidth(), image.getHeight());
-            this.name = name;
-            this.image = image;
-            this.x = x;
-            this.y = y;
-        }
+    static private BufferedImage getImage(String name){
+        return regions.get(name, () -> {
+            try{
+                return ImageIO.read(imageFiles.get(name, imageFiles.get("error")).file());
+            }catch(Exception e){
+                throw new RuntimeException(e);
+            }
+        });
     }
 }

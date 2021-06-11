@@ -10,5 +10,5 @@ fi
 cp  ./build/libs/previewer.jar ../Botzilla/schematic-previewer.jar
 
 scp ./build/libs/previewer.jar nydus6:/root/schematic-previewer.jar
-ssh nydus6 cp /root/schematic-previewer.jar /opt/Botzilla/schematic-previewer.jar
+ssh nydus6 cp /root/schematic-previewer.jar /opt/botzilla/schematic-previewer.jar
 ssh nydus6 rm /root/schematic-previewer.jar
