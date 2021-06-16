@@ -28,6 +28,7 @@ import java.awt.geom.*;
 import java.awt.image.*;
 import java.io.*;
 import java.util.*;
+import java.util.zip.*;
 
 import static mindustry.Vars.*;
 
@@ -41,7 +42,7 @@ public class Schematic{
     static private Graphics2D currentGraphics;
     static private final float bridgeOpacity = 0.75f;
     static private final ObjectMap<String, BufferedImage> regions = new ObjectMap<>();
-    static private final ObjectMap<String, Fi> imageFiles = new ObjectMap<>();
+    static private final StringMap imageFiles = new StringMap();
 
     public int pixelSize = 4;
     public int pixelArtBorderPixels = 4; // top & bottom, left & right
@@ -168,7 +169,7 @@ public class Schematic{
             factory.setSize(24);
             var shadow = factory.createShadow(schematicImage);
 
-            BufferedImage background = ImageIO.read(Core.files.internal("assets/schematic-background.png").read());
+            BufferedImage background = ImageIO.read(Core.files.internal("schematic-background.png").read());
             BufferedImage withBackground = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
             background = repeatToSize(background, width, height);
@@ -310,14 +311,26 @@ public class Schematic{
 
         Vars.state = new GameState();
 
-        TextureAtlasData data = new TextureAtlasData(Core.files.internal("assets/sprites.aatls"), Core.files.internal("assets"), false);
+        TextureAtlasData data = new TextureAtlasData(Core.files.internal("sprites.aatls"), Core.files.internal("assets"), false);
         Core.atlas = new TextureAtlas();
 
-        Core.files.internal("assets/sprites").walk(f -> {
-            if(f.extEquals("png")){
-                imageFiles.put(f.nameWithoutExtension(), f);
+        try {
+            var src = Schematic.class.getProtectionDomain().getCodeSource();
+            if (src != null) {
+                var zip = new ZipInputStream(src.getLocation().openStream());
+                ZipEntry ze;
+
+                while ((ze = zip.getNextEntry()) != null) {
+                    String entryName = ze.getName();
+                    if(entryName.startsWith("sprites") && entryName.endsWith(".png") ) {
+                        imageFiles.put(entryName.substring(entryName.lastIndexOf('/') + 1, entryName.length() - 4), entryName);
+                    }
+                }
+
             }
-        });
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         data.getPages().each(page -> {
             page.texture = Texture.createEmpty(null);
@@ -452,7 +465,7 @@ public class Schematic{
     static private BufferedImage getImage(String name){
         return regions.get(name, () -> {
             try{
-                return ImageIO.read(imageFiles.get(name, imageFiles.get("error")).file());
+                return ImageIO.read(Schematic.class.getClassLoader().getResource(imageFiles.get(name, "error")));
             }catch(Exception e){
                 throw new RuntimeException(e);
             }
