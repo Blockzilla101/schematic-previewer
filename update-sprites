@@ -6,7 +6,7 @@
 
 [[ -d "./assets" ]] && rm -rf "./assets"
 
-echo -n "Copying new sprites..."
+echo -n "Copying sprites..."
 
 mkdir "./assets"
 cp "../Mindustry/core/assets/sprites/error.png" "./assets"
