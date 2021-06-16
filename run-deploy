@@ -1,5 +1,12 @@
 #!/usr/bin/bash
 
+./update-sprites
+
+if [[ ! $? == '0' ]]; then
+    echo "Sprites update failed"
+    exit 1
+fi
+
 ./gradlew dist --no-daemon -q
 
 if [[ ! $? == '0' ]]; then
@@ -9,6 +16,6 @@ fi
 
 cp  ./build/libs/previewer.jar ../Botzilla/schematic-previewer.jar
 
-scp ./build/libs/previewer.jar nydus6:/root/schematic-previewer.jar
-ssh nydus6 cp /root/schematic-previewer.jar /opt/botzilla/schematic-previewer.jar
-ssh nydus6 rm /root/schematic-previewer.jar
+scp ./build/libs/previewer.jar nydus6:/tmp/schematic-previewer.jar
+ssh nydus6 cp /tmp/schematic-previewer.jar /opt/botzilla/schematic-previewer.jar
+ssh nydus6 rm /tmp/schematic-previewer.jar

@@ -1,17 +1,19 @@
 #!/usr/bin/bash
 
-MindustryDir="../Mindustry"
-SpriteDir="${MindustryDir}/core/assets/sprites"
+[[ ! -d "../Mindustry" ]] && echo "Mindustry source code not found" && exit 1
+[[ ! -d "../Mindustry/core/assets-raw/sprites_out" ]] && echo "Sprites not found" && exit 1
+[[ ! -d "../Mindustry/core/assets/sprites" ]] && echo "Sprites not found" && exit 1
 
-[[ ! -d "${MindustryDir}" ]] && echo "Mindustry source code not found" && exit 1
-[[ ! -d "${SpriteDir}" ]] && echo "Sprites not found" && exit 1
+[[ -d "./assets" ]] && rm -rf "./assets"
 
-[[ -d "./assets/sprites" ]] && rm -rf "./assets/sprites" && echo "Deleted old sprites"
+echo -n "Copying new sprites..."
 
-cp -r ${SpriteDir} "./assets"
+mkdir "./assets"
+cp "../Mindustry/core/assets/sprites/error.png" "./assets"
+cp "../Mindustry/core/assets/sprites/sprites.aatls" "./assets"
+cp "../Mindustry/core/assets/sprites/schematic-background.png" "./assets"
 
-rm "./assets/sprites/block_colors.png"
-rm "./assets/sprites/space.png"
-rm "./assets/sprites/logo.png"
+cp -r "../Mindustry/core/assets-raw/sprites_out" "./assets"
+mv "./assets/sprites_out" "./assets/sprites"
 
-echo "Sprites updated"
+echo "Done"

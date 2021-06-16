@@ -3,10 +3,8 @@ package schematichandler;
 import arc.*;
 import arc.graphics.*;
 import arc.graphics.Color;
-import arc.graphics.Pixmap.*;
 import arc.graphics.g2d.*;
 import arc.graphics.g2d.TextureAtlas.*;
-import arc.graphics.g2d.TextureAtlas.TextureAtlasData.*;
 import arc.math.*;
 import arc.mock.*;
 import arc.struct.*;
@@ -170,7 +168,7 @@ public class Schematic{
             factory.setSize(24);
             var shadow = factory.createShadow(schematicImage);
 
-            BufferedImage background = ImageIO.read(Core.files.internal("sprites/schematic-background.png").read());
+            BufferedImage background = ImageIO.read(Core.files.internal("assets/schematic-background.png").read());
             BufferedImage withBackground = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
             background = repeatToSize(background, width, height);
@@ -312,12 +310,10 @@ public class Schematic{
 
         Vars.state = new GameState();
 
-        TextureAtlasData data = new TextureAtlasData(Core.files.internal("sprites/sprites.aatls"), Core.files.internal("sprites"), false);
+        TextureAtlasData data = new TextureAtlasData(Core.files.internal("assets/sprites.aatls"), Core.files.internal("assets"), false);
         Core.atlas = new TextureAtlas();
 
-        ObjectMap<AtlasPage, BufferedImage> images = new ObjectMap<>();
-
-        new Fi("../Mindustry/core/assets-raw/sprites_out").walk(f -> {
+        Core.files.internal("assets/sprites").walk(f -> {
             if(f.extEquals("png")){
                 imageFiles.put(f.nameWithoutExtension(), f);
             }
@@ -325,8 +321,8 @@ public class Schematic{
 
         data.getPages().each(page -> {
             page.texture = Texture.createEmpty(null);
-            page.texture.width = (int)page.width;
-            page.texture.height = (int)page.height;
+            page.texture.width = page.width;
+            page.texture.height = page.height;
         });
 
         data.getRegions().each(reg -> {
