@@ -1,5 +1,6 @@
-const fs = require('fs');
-const { Schematic } = require('./schematic');
+import { Schematic } from './schematic.js'
+import { Pos } from './util/pos.js'
+import fs from 'fs'
 
-const data = fs.readFileSync('./test.msch');
-console.log(Schematic.read(data).toString());
+const data = fs.readFileSync(process.argv[2])
+console.log(Schematic.read(data).toString())

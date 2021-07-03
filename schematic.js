@@ -1,256 +1,141 @@
-const zip = require('zlib')
+import zip from 'zlib'
+import { InputStream } from './util/stream.js'
+import { Tile } from './util/tile.js'
+import { Pos } from './util/pos.js'
 
-class Stream {
-    /** @type {Number} */
-    #offset = 0;
-    /** @type {Buffer} */
-    #buffer;
+export class Schematic {
+    width
+    height
 
-    constructor(buffer, offset = 0) {
-        this.#buffer = buffer;
-        this.#offset = offset;
-    }
+    name
+    description
 
-    skip(num) {
-        this.#offset += num;
-    }
-
-    readByte() {
-        return this.#buffer.readInt8((this.#offset += 1) - 1)
-    }
-
-    readShort() {
-        return this.#buffer.readInt16BE((this.#offset += 2) - 2)
-    }
-
-    readInt() {
-        return this.#buffer.readInt32BE((this.#offset += 4) - 4)
-    }
-
-    readLong() {
-        return this.#buffer.readBigInt64BE((this.#offset += 8) - 8)
-    }
-
-    readFloat() {
-        return parseFloat(this.readInt().toString(2));
-    }
-
-    readDouble() {
-        return parseFloat(this.readFloat().toString(2));
-    }
-
-    readBool() {
-        return this.readByte() === 0
-    }
-
-    readUTF() {
-        const len = this.readShort();
-        let str = this.#buffer.toString('utf-8', this.#offset, this.#offset + len)
-        this.#offset += str.length;
-        return str;
-    }
-
-    remaining() {
-        return this.#buffer.slice(this.#offset)
-    }
-}
-
-function unpackPos(pos) {
-    return { x: pos >>> 16, y: pos & 0xFFF }
-}
-
-class Schematic {
-    /** @type {number} */
-    #width;
-    /** @type {number} */
-    #height;
-
-    /** @type {string} */
-    #name;
-    /** @type {string} */
-    #description;
-
-    /** @type {string[]} */
-    #blocks = [];
-    /** @type {{blockIndex: number, position: {x: number, y: number}, rotation: number, config: any}[]} */
-    #tiles = [];
-
-    constructor(width, height, name, description, tiles, blocks) {
-        this.#width = width;
-        this.#height = height;
-        this.#name = name;
-        this.#description = description;
-        this.#tiles = tiles;
-        this.#blocks = blocks;
-    }
-
-    static read(buffer) {
-        let stream = new Stream(buffer);
-        for (let i = 0; i < Schematic.Header.length; i++) {
-            if (stream.readByte() !== Schematic.Header.codePointAt(i)) throw new Error("Invalid Header");
-        }
-        const version = stream.readByte();
-
-        stream = new Stream(zip.inflateSync(stream.remaining()))
-
-        const width = stream.readShort();
-        const height = stream.readShort();
-
-        let numTags = stream.readByte();
-        let tags = new Map();
-        for (let i = 0; i < numTags; i++) {
-            tags.set(stream.readUTF(), stream.readUTF())
-        }
-
-        let numBlocks = stream.readByte();
-        let blocks = []
-        for (let i = 0; i < numBlocks; i++) {
-            blocks.push(stream.readUTF())
-        }
-
-        let numTiles = stream.readInt();
-        let tiles = [];
-        for (let i = 0; i < numTiles; i++) {
-            try {
-                let blockIndex = stream.readByte();
-                let position = stream.readInt();
-
-                let config = version === 0 ? this.#readConfig0(blocks[blockIndex], stream.readInt(), position) : this.#readConfig1(stream)
-
-                let rotation = stream.readByte();
-                tiles.push({ blockIndex, position: unpackPos(position), rotation, config })
-            } catch (e) {
-                console.log('error while reading')
-            }
-        }
-
-        return new Schematic(width, height, tags.get('name'), tags.get('description'), tiles, blocks);
-    }
-
-    /**
-     * @param {Stream} stream
-     */
-    static #readConfig1(stream) {
-        let type = stream.readByte();
-        switch(type){
-            case 0: {
-                return null
-            }
-            case 1: {
-                return stream.readInt()
-            }
-            case 2: {
-                return stream.readLong()
-            }
-            case 3: {
-                return stream.readFloat()
-            }
-            case 4: {
-                return stream.readUTF()
-            }
-            case 5: {
-                stream.readByte();
-                stream.readShort();
-                return;
-            }
-            case 6: {
-                let length = stream.readShort();
-                let arr = []
-                for (let i = 0; i < length; i++) arr.push(stream.readInt());
-                return arr;
-            }
-            case 7: {
-                return { x: stream.readInt(), y: stream.readInt() }
-            }
-            case 8: {
-                let len = stream.readByte();
-                let out = [];
-                for (let i = 0; i < len; i++) out[i] = unpackPos(stream.readInt());
-                return out;
-            }
-            case 9: {
-                stream.readByte();
-                stream.readShort();
-                return;
-            }
-            case 10: {
-                return stream.readBool();
-            }
-            case 11: {
-                return stream.readDouble();
-            }
-            case 12: {
-                return unpackPos(stream.readInt())
-            }
-            case 13: {
-                return stream.readShort();
-            }
-            case 14: {
-                let len = stream.readInt();
-                let out = [];
-                for (let i = 0; i < len; i++) out[i] = stream.readByte();
-                return out;
-            }
-            case 15: {
-                return stream.readByte();
-            }
-        }
-    }
-
-    /**
-     * @param {string} block
-     * @param {number} config
-     * @param {number} position
-     */
-    static #readConfig0(block, config, position) {
-        if (['sorter', 'inverted-sorter', 'item-source', 'unloader'].includes(block)) return 'item';
-        if (['liquid-source'].includes(block)) return 'liquid';
-        if (['mass-driver', 'phase-conveyor', 'bridge-conveyor'].includes(block)) return 'other bridge pos';
-        if (['illuminator'].includes(block)) return 'color';
-        return null;
-    }
-
-    static get Header() {
-        return 'msch'
-    }
-
-    get width() {
-        return this.#width;
-    }
-
-    get height() {
-        return this.#height;
-    }
-
-    get name() {
-        return this.#name;
-    }
-
-    get description() {
-        return this.#description;
-    }
+    /** @type {Tile[]} */
+    tiles = []
 
     toString() {
-        let blocks = this.#blocks;
-        let largestX = 0;
-        let largestY = 0;
-        let largestBlockName = 0;
         let str = []
+        str.push(`name: ${this.name} | description: ${this.description}`)
+        str.push(`width: ${this.width} | height: ${this.height}`)
+        str.push(`tiles: ${this.tiles.length}`)
 
-        this.#tiles.forEach(t => {
-            if (blocks[t.blockIndex].length > largestBlockName) largestBlockName = blocks[t.blockIndex].length
-            if (t.position.x.toString().length > largestX) largestX = t.position.x.toString().length
-            if (t.position.y.toString().length > largestY) largestY = t.position.y.toString().length
+        let xLen = 0
+        let yLen = 0
+        let blockLen = 0
+
+        this.tiles.forEach(tile => {
+            if (tile.block.length > blockLen) blockLen = tile.block.length
+            if (tile.pos.x.toString().length > xLen) xLen = tile.pos.x.toString().length
+            if (tile.pos.y.toString().length > yLen) yLen = tile.pos.y.toString().length
         })
 
-        this.#tiles.forEach(t => {
-            str.push(`${blocks[t.blockIndex].padEnd(largestBlockName)} | pos (${(t.position.x).toString().padStart(largestX, '0')}, ${(t.position.y).toString().padStart(largestY, '0')}) | rot ${t.rotation} | config ${JSON.stringify(t.config)}`)
+        this.tiles.forEach(t => {
+            str.push(`${t.block.padEnd(blockLen)} | pos(${t.pos.x.toString().padStart(xLen, '0')}, ${t.pos.y.toString().padStart(yLen, '0')}) | rot ${t.rot} | config ${t.config}`)
         })
 
-        return `width ${this.width} | height ${this.height}\nname ${this.name} | description ${this.description}\nblocks ${JSON.stringify(this.#blocks)}\n${str.join('\n')}`
+        return str.join('\n')
+    }
+
+    /**
+     * @param {Buffer} buffer
+     * @constructs
+     */
+    static read(buffer) {
+        let stream = new InputStream(buffer)
+        for (let i = 0; i < this.header.length; i++) {
+            if (stream.readByte() !== this.header.codePointAt(i)) throw new Error('Invalid Header')
+        }
+
+        const ver = stream.readByte()
+
+        stream = new InputStream(zip.inflateSync(stream.remaining()))
+        const schematic = new this()
+
+        schematic.width = stream.readShort()
+        schematic.height = stream.readShort()
+
+        let map = new Map()
+        let len = stream.readByte()
+        for (let i = 0; i < len; i++) {
+            map.set(stream.readStr(), stream.readStr())
+        }
+
+        schematic.name = map.get('name') ?? 'unknown'
+        schematic.description = map.get('description') ?? null
+
+        let labels = map.get('labels')
+
+        let blocks = []
+        len = stream.readByte()
+        for (let i = 0; i < len; i++) {
+            blocks.push(stream.readStr())
+        }
+
+        len = stream.readInt()
+        for (let i = 0; i < len; i++) {
+            let block = blocks[stream.readByte()]
+            let pos = Pos.unpack(stream.readInt())
+            let config = ver === 0 ? readConfig0(block, stream.readInt(), pos) : readConfig1(stream)
+            let rot = stream.readByte()
+            if (block !== 'air') schematic.tiles.push(new Tile(block, pos, rot, config))
+        }
+
+        return schematic
+    }
+
+    static get header() {
+        return 'msch'
     }
 }
 
-module.exports = {
-    Schematic, Stream
+function readConfig0(block, value, pos) {
+    if (['sorter', 'inverted-sorter', 'item-source'].includes(block)) return '[item]'
+    if (['liquid-source'].includes(block)) return '[liquid]'
+    if (['mass-driver', 'item-bridge'].includes(block)) return Pos.unpack(value).sub(pos)
+    if (['illuminator'].includes(block)) return value
+    return null
 }
+
+/**
+ * @param {InputStream} stream
+ */
+function readConfig1(stream) {
+    const type = stream.readByte()
+    switch (type) {
+        case 0: return null
+        case 1: return stream.readInt()
+        case 2: return stream.readLong()
+        case 3: return stream.readFloat()
+        case 4: return stream.readStr()
+        case 5: {
+            stream.readByte()
+            stream.readShort()
+            return '[ type 5 is not done ]'
+        }
+        case 6: return stream.readArr(stream.readShort(), () => stream.readInt())
+        case 7: return new Pos(stream.readInt(), stream.readInt())
+        case 8: return stream.readArr(stream.readByte(), () => new Pos(stream.readShort(), stream.readShort()))
+        case 9: {
+            stream.readByte()
+            stream.readShort()
+            return '[ type 9 is not done ]'
+        }
+        case 10: return stream.readBool()
+        case 11: return stream.readDouble()
+        case 12: {
+            stream.readInt()
+            return '[ type 12 is not done ]'
+        }
+        case 13: {
+            stream.readShort()
+            return '[ type 13 is not done ]'
+        }
+        case 14: return stream.readArr(stream.readShort(), () => stream.readByte())
+        case 15: {
+            stream.readByte()
+            return '[ type 15 is not done ]'
+        }
+        default: throw new Error(`Invalid type ${type}`)
+    }
+}
+
