@@ -10,7 +10,10 @@ export class Pos {
     }
 
     pack() {
-        return null
+        let buffer = Buffer.alloc(4)
+        buffer.writeInt16BE(this.x, 0)
+        buffer.writeInt16BE(this.y, 2)
+        return buffer.readInt32BE(0)
     }
 
     sub(pos) {
@@ -19,7 +22,9 @@ export class Pos {
     }
 
     static unpack(pos) {
-        return new this(pos >>> 16, pos & 0xffff)
+        let buffer = Buffer.alloc(4)
+        buffer.writeInt32BE(pos, 0)
+        return new this(buffer.readInt16BE(0), buffer.readInt16BE(2))
     }
 
     toString(xPad = 0, yPad = 0) {

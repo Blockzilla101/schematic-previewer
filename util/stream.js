@@ -65,46 +65,78 @@ export class InputStream {
     }
 }
 
+/**
+ * @param {Buffer} buffer
+ * @param {number} newSize
+ * @return {Buffer}
+ */
+function expandBuffer(buffer, newSize) {
+    let newBuffer = Buffer.alloc(newSize)
+    buffer.copy(newBuffer)
+    return newBuffer
+}
+
+
 export class OutputStream {
     /** @type {Number} */
     #offset = 0
     /** @type {Buffer} */
     #buffer
 
-    constructor(buffer = new Buffer(0)) {
+    constructor(buffer = Buffer.alloc(0)) {
         this.#buffer = buffer
     }
 
     writeByte(byte) {
-        this.#buffer.writeInt8(byte)
+        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 1)
+        this.#buffer.writeInt8(byte, this.#buffer.length - 1)
     }
 
     writeShort(short) {
-        this.#buffer.writeInt16BE(short)
+        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 2)
+        this.#buffer.writeInt16BE(short, this.#buffer.length - 2)
     }
 
-    readInt(int) {
-        this.#buffer.writeInt32BE(int)
+    writeInt(int) {
+        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 4)
+        this.#buffer.writeInt32BE(int, this.#buffer.length - 4)
     }
 
     writeLong(long) {
-        this.#buffer.writeBigInt64BE(long)
+        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 8)
+        this.#buffer.writeBigInt64BE(long, this.#buffer.length - 8)
     }
 
     writeFloat(float) {
-        this.#buffer.writeInt32BE(parseInt(float.toString(2), 2))
+        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 4)
+        this.#buffer.writeInt32BE(parseInt(float.toString(2), 2), this.#buffer.length - 4)
     }
 
-    readDouble(double) {
+    writeDouble(double) {
         // todo: figure what a double actually is
-        this.#buffer.writeInt32BE(parseInt(double.toString(2), 2))
+        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 4)
+        this.#buffer.writeInt32BE(parseInt(double.toString(2), 2), this.#buffer.length - 4)
     }
 
     writeBool(bool) {
-        this.#buffer.writeInt8(bool ? 1 : 0)
+        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 1)
+        this.#buffer.writeInt8(bool ? 1 : 0, this.#buffer.length - 1)
     }
 
     writeString(str) {
-        this.#buffer.write(str, 'utf-8')
+        this.writeShort(str.length)
+        for (let i = 0; i < str.length; i++) {
+            this.writeByte(str.codePointAt(i))
+        }
+    }
+
+    write(buffer) {
+        let oldLen = this.#buffer.length
+        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + buffer.length)
+        buffer.copy(this.#buffer, oldLen)
+    }
+
+    get buffer() {
+        return this.#buffer
     }
 }

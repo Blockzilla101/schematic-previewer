@@ -3,7 +3,7 @@ export class Tile {
     pos
     /** @type {string} */
     block
-    /** @type {Object|null} */
+    /** @type {Config|null} */
     config = null
     /** @type {number} */
     rot
@@ -12,7 +12,7 @@ export class Tile {
      * @param {string} block
      * @param {Pos} pos
      * @param {number} [rot=0]
-     * @param {Object} [config=null]
+     * @param {Config} [config=null]
      */
     constructor(block, pos, rot = 0, config = null) {
         this.block = block
