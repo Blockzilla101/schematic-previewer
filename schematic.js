@@ -155,6 +155,14 @@ export class Schematic {
         return this._tags.get('description') ?? null
     }
 
+    set name(val) {
+        this._tags.set('name', val)
+    }
+
+    set description(val) {
+        this._tags.set('description', val)
+    }
+
     static get header() {
         return 'msch'
     }

@@ -65,6 +65,8 @@ export class InputStream {
     }
 }
 
+const chunkSize = 100000
+
 /**
  * @param {Buffer} buffer
  * @param {number} newSize
@@ -76,51 +78,57 @@ function expandBuffer(buffer, newSize) {
     return newBuffer
 }
 
-
 export class OutputStream {
     /** @type {Number} */
     #offset = 0
     /** @type {Buffer} */
     #buffer
 
-    constructor(buffer = Buffer.alloc(0)) {
+    constructor(buffer = Buffer.alloc(chunkSize)) {
         this.#buffer = buffer
     }
 
     writeByte(byte) {
-        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 1)
-        this.#buffer.writeInt8(byte, this.#buffer.length - 1)
+        this.#tryResize()
+        this.#buffer.writeInt8(byte, this.#offset)
+        this.#offset += 1
     }
 
     writeShort(short) {
-        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 2)
-        this.#buffer.writeInt16BE(short, this.#buffer.length - 2)
+        this.#tryResize()
+        this.#buffer.writeInt16BE(short, this.#offset)
+        this.#offset += 2
     }
 
     writeInt(int) {
-        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 4)
-        this.#buffer.writeInt32BE(int, this.#buffer.length - 4)
+        this.#tryResize()
+        this.#buffer.writeInt32BE(int, this.#offset)
+        this.#offset += 4
     }
 
     writeLong(long) {
-        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 8)
-        this.#buffer.writeBigInt64BE(long, this.#buffer.length - 8)
+        this.#tryResize()
+        this.#buffer.writeBigInt64BE(long, this.#offset)
+        this.#offset += 8
     }
 
     writeFloat(float) {
-        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 4)
-        this.#buffer.writeInt32BE(parseInt(float.toString(2), 2), this.#buffer.length - 4)
+        this.#tryResize()
+        this.#buffer.writeInt32BE(parseInt(float.toString(2), 2), this.#offset)
+        this.#offset += 4
     }
 
     writeDouble(double) {
+        this.#tryResize()
         // todo: figure what a double actually is
-        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 4)
-        this.#buffer.writeInt32BE(parseInt(double.toString(2), 2), this.#buffer.length - 4)
+        this.#buffer.writeInt32BE(parseInt(double.toString(2), 2), this.#offset)
+        this.#offset += 4
     }
 
     writeBool(bool) {
-        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + 1)
-        this.#buffer.writeInt8(bool ? 1 : 0, this.#buffer.length - 1)
+        this.#tryResize()
+        this.#buffer.writeInt8(bool ? 1 : 0, this.#offset)
+        this.#offset += 1
     }
 
     writeString(str) {
@@ -130,13 +138,24 @@ export class OutputStream {
         }
     }
 
+    /**
+     * @param {Buffer} buffer
+     */
     write(buffer) {
-        let oldLen = this.#buffer.length
-        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + buffer.length)
-        buffer.copy(this.#buffer, oldLen)
+        this.#tryResize()
+        if (buffer.length + this.#offset > this.#buffer.length) {
+            this.#buffer = expandBuffer(this.#buffer, buffer.length + chunkSize)
+        }
+        buffer.copy(this.#buffer, this.#offset)
+        this.#offset += buffer.length
+    }
+
+    #tryResize() {
+        if (this.#offset + chunkSize < this.#buffer.length) return
+        this.#buffer = expandBuffer(this.#buffer, this.#buffer.length + chunkSize)
     }
 
     get buffer() {
-        return this.#buffer
+        return this.#buffer.slice(0, this.#offset)
     }
 }
