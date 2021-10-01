@@ -42,10 +42,10 @@ if [[ ! $? == '0' ]]; then
     exit 1
 fi
 
-cp  ./build/libs/previewer.jar ../Botzilla/schematic-previewer.jar
+# cp  ./build/libs/previewer.jar ../Botzilla/schematic-previewer.jar
 
 [[ $# -ne 0 ]] && exit 1
 
-scp ./build/libs/previewer.jar nydus6:/tmp/schematic-previewer.jar
-ssh nydus6 cp /tmp/schematic-previewer.jar /opt/botzilla/schematic-previewer.jar
-ssh nydus6 rm /tmp/schematic-previewer.jar
+scp ./build/libs/previewer.jar nydus:/tmp/schematic-previewer.jar
+ssh nydus cp /tmp/schematic-previewer.jar /opt/botzilla/schematic-previewer.jar
+ssh nydus rm /tmp/schematic-previewer.jar
