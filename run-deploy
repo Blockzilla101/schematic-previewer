@@ -1,10 +1,38 @@
 #!/usr/bin/bash
 
-#!/usr/bin/bash
+lastDir=`pwd`
 
-[[ ! -d "../Mindustry" ]] && echo "Mindustry source code not found" && exit 1
-[[ ! -d "../Mindustry/core/assets-raw/sprites_out" ]] && echo "Sprites not found" && exit 1
-[[ ! -d "../Mindustry/core/assets/sprites" ]] && echo "Sprites not found" && exit 1
+# read current hashes
+spriteHashOld=`cat sprites-hash`
+
+cd ../Mindustry
+
+# keep track of last branch in mindustry
+temp=`git status 2> /dev/null | head -n 1`;
+branch="master";
+if [[ ! ${temp} =~ ^HEAD* ]]; then
+    branch=${temp:10}
+fi
+
+# calculate new sprite hashes
+cut -c 1-64 <<< `find "./core/assets-raw/sprites_out" -type f | xargs -L 1 sha256sum` | sort | sha256sum | cut -c 1-64 > temp
+spriteHash=`cat temp`
+rm temp
+
+# create new sprites if the duffer
+if [[ "${spriteHashOld}" != "${spriteHash}" ]]; then
+    echo "Sprite hashes differ"
+    git checkout master
+    ./gradlew tools:pack --no-daemon
+
+    # checkout the last branch in mindustry
+    git checkout "${branch}"
+fi
+
+cd "${lastDir}"
+
+# write new hashes
+echo "${spriteHash}" > sprites-hash
 
 [[ -d "./assets" ]] && rm -rf "./assets"
 
@@ -17,8 +45,6 @@ cp "../Mindustry/core/assets/sprites/schematic-background.png" "./assets"
 
 cp -r "../Mindustry/core/assets-raw/sprites_out" "./assets"
 mv "./assets/sprites_out" "./assets/sprites"
-
-cut -c 1-64 <<< `find "../Mindustry/core/assets-raw/sprites_out" -type f | xargs -L 1 sha256sum` | sort | sha256sum | cut -c 1-64 > sprites-hash
 
 rm gradle.properties
 
