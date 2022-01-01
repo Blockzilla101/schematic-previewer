@@ -49,13 +49,12 @@ public class SchematicHandler {
                 for(var opts: bulk) {
                     try {
                         var schem = new Schematic(opts.schematic, opts.background, opts.backgroundOffset, fromHex(opts.borderColor), opts.createPreview, opts.pixelArt);
-                        var previewPath = "schem-preview-" + Time.millis() + ".png";
-
-                        if (opts.createPreview) ImageIO.write(schem.image, "png", new File(previewPath));
+                        if (opts.createPreview) ImageIO.write(schem.image, "png", new File(opts.outPath));
 
                         var map = schem.toMap();
                         map.put("success", true);
-                        if (opts.createPreview) map.put("previewPath", previewPath);
+                        map.put("schem", opts.schematic);
+			if (opts.createPreview) map.put("previewPath", opts.outPath);
                         done.add(map);
                     } catch(Exception e) {
                         var map = new HashMap<String, Object>();
@@ -117,13 +116,11 @@ public class SchematicHandler {
         if (parsed.bulk == null) {
             if (parsed.schemFiles.size() == 0) throw new ParameterException("Missing schematic file");
             parsed.schematic = parsed.schemFiles.get(0);
-            System.out.println(parsed.schemFiles);
-            if (parsed.outPath == null && parsed.createPreview && !inBulk) throw new ParameterException("The following option is required: [-o, --out, --output]");
+            if (parsed.outPath == null && parsed.createPreview) throw new ParameterException("The following option is required: [-o, --out, --output]");
             if (parsed.createPreview && parsed.pixelArt && !parsed.background) throw new ParameterException("Pixel art option needs background option to be set to true");
             if (parsed.backgroundOffset < 0) throw new ParameterException("Background offset cant be smaller then zero");
             if (!Fi.get(parsed.schematic).exists() && !parsed.schematic.startsWith(Schematic.header)) throw new ParameterException("Schematic is not a valid path and not base64");
             if (inBulk && parsed.dataPath != null) throw new ParameterException("Data path cannot be used in bulk file");
-            if (inBulk && parsed.outPath != null) throw new ParameterException("Output path cannot be used in bulk file");
         } else {
             if (inBulk) throw new ParameterException("Bulk option cannot be used in bulk file");
             if (!Fi.get(parsed.bulk).exists()) throw new ParameterException("Path to bulk file is invalid");

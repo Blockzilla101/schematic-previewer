@@ -23,7 +23,7 @@ rm temp
 if [[ "${spriteHashOld}" != "${spriteHash}" ]]; then
     echo "Sprite hashes differ"
     git checkout master
-    ./gradlew tools:pack --no-daemon
+ #   ./gradlew tools:pack --no-daemon
 
     # checkout the last branch in mindustry
     git checkout "${branch}"

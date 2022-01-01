@@ -13,7 +13,7 @@ Generates a preview for a mindustry schematic, along with printing other stuff a
 | `-bg <true\|false>` | Whether to create the prevew with a background or not. Required with using `-art`. |
 | `-bc <#hexcolor>` | Hex color for border in background. |
 | `-art <true\|false>` | Whether to render sorter/pixel art for schematics. Requires `-bg`. Its position cant be changed and is always it top left if the schematic is pixel art. |
-| `--bulk <path/to/file>` | Preview schematics in bulk. |
+| `-bulk <path/to/file>` | Preview schematics in bulk. |
 ##### Bulk Mode
 Format for bulk mode is same as arguments to the jar. eg `previewer.jar [options] schematic.msch` -> `[options] schematic.msch`. `-d` option is required. `-o` option cannot be used in bulk mode. Preview image (if preview is enabled) is outputted to `schem-preview-<time>.png` and `previewPath` is set to the image in the data file.
 
