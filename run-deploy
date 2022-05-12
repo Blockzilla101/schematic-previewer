@@ -1,38 +1,11 @@
 #!/usr/bin/bash
 
 lastDir=`pwd`
-
-# read current hashes
-spriteHashOld=`cat sprites-hash`
-
 cd ../Mindustry
-
-# keep track of last branch in mindustry
 temp=`git status 2> /dev/null | head -n 1`;
-branch="master";
-if [[ ! ${temp} =~ ^HEAD* ]]; then
-    branch=${temp:10}
-fi
-
-# calculate new sprite hashes
-cut -c 1-64 <<< `find "./core/assets-raw/sprites_out" -type f | xargs -L 1 sha256sum` | sort | sha256sum | cut -c 1-64 > temp
-spriteHash=`cat temp`
-rm temp
-
-# create new sprites if the duffer
-if [[ "${spriteHashOld}" != "${spriteHash}" ]]; then
-    echo "Sprite hashes differ"
-    git checkout master
- #   ./gradlew tools:pack --no-daemon
-
-    # checkout the last branch in mindustry
-    git checkout "${branch}"
-fi
-
+echo "packing sprites on branch: ${temp:10}"
+#./gradlew desktop:dist tools:pack --no-daemon
 cd "${lastDir}"
-
-# write new hashes
-echo "${spriteHash}" > sprites-hash
 
 [[ -d "./assets" ]] && rm -rf "./assets"
 

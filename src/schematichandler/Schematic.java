@@ -77,7 +77,7 @@ public class Schematic{
         requests.each(req -> {
             if(pixelArt && hasPixelArt && !pixelArtBlocks.contains(req.block.name)) hasPixelArt = false;
             if (req.block instanceof Battery) {
-                batteryStorage += req.block.consumes.getPower().capacity;
+                batteryStorage += req.block.consPower.capacity;
             }
         });
 
@@ -100,19 +100,19 @@ public class Schematic{
         requests.each(req -> {
             req.animScale = 1f;
             req.worldContext = false;
-            req.block.drawRequestRegion(req, requests::each);
+            req.block.drawPlanRegion(req, requests);
             Draw.reset();
         });
         requests.each(req -> { // Draw bridge conveyors separately first to avoid some being over power node connections and some below
             if(req.block instanceof ItemBridge){
                 Draw.alpha(bridgeOpacity);
-                req.block.drawRequestConfigTop(req, requests::each);
+                req.block.drawPlanConfigTop(req, requests);
                 Draw.reset();
             }
         });
         requests.each(req -> {
             if(!(req.block instanceof ItemBridge)){
-                req.block.drawRequestConfigTop(req, requests::each);
+                req.block.drawPlanConfigTop(req, requests);
                 Draw.reset();
             }
         });
