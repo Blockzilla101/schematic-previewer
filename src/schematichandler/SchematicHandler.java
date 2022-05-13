@@ -3,6 +3,7 @@ package schematichandler;
 import arc.files.*;
 import arc.struct.*;
 import arc.util.*;
+import arc.util.Strings;
 import com.beust.jcommander.*;
 import com.google.gson.*;
 
@@ -13,6 +14,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class SchematicHandler {
+    private static int c = 0;
     public static void main(String[] args) {
         SchematicOptions parsedArgs = null;
         try {
@@ -54,7 +56,7 @@ public class SchematicHandler {
                         var map = schem.toMap();
                         map.put("success", true);
                         map.put("schem", opts.schematic);
-			if (opts.createPreview) map.put("previewPath", opts.outPath);
+			            if (opts.createPreview) map.put("previewPath", opts.outPath);
                         done.add(map);
                     } catch(Exception e) {
                         var map = new HashMap<String, Object>();
@@ -116,7 +118,10 @@ public class SchematicHandler {
         if (parsed.bulk == null) {
             if (parsed.schemFiles.size() == 0) throw new ParameterException("Missing schematic file");
             parsed.schematic = parsed.schemFiles.get(0);
-            if (parsed.outPath == null && parsed.createPreview) throw new ParameterException("The following option is required: [-o, --out, --output]");
+            if (parsed.outPath == null && parsed.createPreview) {
+                if (!inBulk) throw new ParameterException("The following option is required: [-o, --out, --output]");
+                parsed.outPath = Strings.format("@@.png", Time.millis(), ++c);
+            }
             if (parsed.createPreview && parsed.pixelArt && !parsed.background) throw new ParameterException("Pixel art option needs background option to be set to true");
             if (parsed.backgroundOffset < 0) throw new ParameterException("Background offset cant be smaller then zero");
             if (!Fi.get(parsed.schematic).exists() && !parsed.schematic.startsWith(Schematic.header)) throw new ParameterException("Schematic is not a valid path and not base64");

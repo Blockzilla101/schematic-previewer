@@ -31,7 +31,7 @@ public class SchematicOptions{
     @Parameter(names = {"-offset", "--background-offset"}, description = "Number of pixels between the edge and the schematic.", arity = 1)
     public int backgroundOffset = 32;
 
-    @Parameter(names = {"-bulk"}, description = "Read schematics to parse from a file.", arity = 1)
+    @Parameter(names = {"-bulk", "--bulk"}, description = "Read schematics to parse from a file.", arity = 1)
     public String bulk;
 
     public static JCommander parser;
