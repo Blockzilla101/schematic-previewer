@@ -35,7 +35,7 @@ import static mindustry.Vars.*;
 
 public class Schematic{
     public static final boolean drawBackground = true;
-    public static final java.awt.Color borderColor = new java.awt.Color(Color.packRgba(45, 45, 45, 0));
+    public static final java.awt.Color borderColor = awtColor(Color.valueOf("#454545"));
     public static final int backgroundOffset = 32;
     public static final boolean makePixelArt = true;
 
@@ -52,15 +52,16 @@ public class Schematic{
 
     public int pixelSize = 4;
     public int pixelArtBorderPixels = 4; // top & bottom, left & right
-    public int renderSize = size;
+    public int renderSize = maxRenderSize;
 
     final private Seq<String> pixelArtBlocks = Seq.with("sorter", "inverted-sorter", "item-source");
     private boolean hasPixelArt;
 
     static private boolean inited = false;
+    /** render size but static */
     static private int tempSize = 4;
     static public long timeToLoad;
-    static public final int size = 4;
+    static public final int maxRenderSize = 4;
 
     Schematic(String path, boolean createImage) throws IOException{
         // attempt to read the schematic
@@ -96,7 +97,7 @@ public class Schematic{
         if(!createImage) return;
 
         // check if it can be rendered otherwise keep reducing resolution
-        tempSize = 4;
+        tempSize = maxRenderSize;
         while(getMemUsed() > Runtime.getRuntime().freeMemory() && tempSize > 1) tempSize--;
         renderSize = tempSize;
 
@@ -119,18 +120,18 @@ public class Schematic{
             Draw.reset();
         });
 
-        // draw all the bridge conveyor connections
-        requests.each(req -> { // Draw bridge conveyors separately first to avoid some being over power node connections and some below
-            if(req.block instanceof ItemBridge){
+        // draw bridge conveyors separately first to avoid some being over power node connections and some below
+        requests.each(req -> {
+            if(req.block instanceof ItemBridge || req.block instanceof DirectionBridge){
                 Draw.alpha(bridgeOpacity);
                 req.block.drawPlanConfigTop(req, requests);
                 Draw.reset();
             }
         });
 
-        // draw all the power node connections
+        // draw rest of the config
         requests.each(req -> {
-            if(!(req.block instanceof ItemBridge)){
+            if(!(req.block instanceof ItemBridge || req.block instanceof DirectionBridge)){
                 req.block.drawPlanConfigTop(req, requests);
                 Draw.reset();
             }
@@ -380,7 +381,7 @@ public class Schematic{
                 width *= tempSize;
                 height *= tempSize;
 
-                y = currentImage.getHeight() - (y + height / 2f) - height / 2f;
+                y = currentImage.getHeight() - (y + height / 2f) - (height / 2f);
 
                 AffineTransform at = new AffineTransform();
                 at.translate(x, y);
@@ -489,7 +490,7 @@ public class Schematic{
      * @param col arc color
      * @return converted to java.awt.color
      */
-    private java.awt.Color awtColor(Color col) {
+    private static java.awt.Color awtColor(Color col) {
         return new java.awt.Color(col.r, col.g, col.b, col.a);
     }
 
