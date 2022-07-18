@@ -316,7 +316,6 @@ public class Schematic{
      */
     static public void init(){
         if (inited) return;
-        long start = System.currentTimeMillis();
 
         Version.enabled = false;
         Vars.content = new ContentLoader();
@@ -418,7 +417,6 @@ public class Schematic{
             }
         };
 
-        timeToLoad = System.currentTimeMillis() - start;
         inited = true;
     }
 

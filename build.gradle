@@ -15,12 +15,6 @@ allprojects {
     }
 }
 
-task run(dependsOn: classes, type: JavaExec) {
-    main = project.mainClassName
-    classpath = sourceSets.main.runtimeClasspath
-    standardInput = System.in
-}
-
 task dist(type: Jar) {
     from files(sourceSets.main.output.classesDirs)
     from files(sourceSets.main.output.resourcesDir)
@@ -36,6 +30,6 @@ task dist(type: Jar) {
 dependencies {
     implementation "com.github.Anuken.Arc:arc-core:master-SNAPSHOT"
     implementation "com.github.Anuken.MindustryJitpack:core:main-SNAPSHOT"
-    implementation "com.google.code.gson:gson:2.8.6"
+    implementation "com.google.code.gson:gson:2.9.0"
     implementation group: "com.jidesoft", name: "jide-oss", version: "3.6.11"
 }

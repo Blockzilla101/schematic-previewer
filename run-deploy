@@ -1,12 +1,5 @@
 #!/usr/bin/bash
 
-lastDir=`pwd`
-cd ../Mindustry
-temp=`git status 2> /dev/null | head -n 1`;
-echo "packing sprites on branch: ${temp:10}"
-#./gradlew desktop:dist tools:pack --no-daemon
-cd "${lastDir}"
-
 [[ -d "./assets" ]] && rm -rf "./assets"
 
 echo "Copying sprites"
@@ -19,19 +12,12 @@ cp "../Mindustry/core/assets/sprites/schematic-background.png" "./assets"
 cp -r "../Mindustry/core/assets-raw/sprites_out" "./assets"
 mv "./assets/sprites_out" "./assets/sprites"
 
-lastDir=`pwd`
-cd "../Mindustry"
-
-cd "${lastDir}"
-
 ./gradlew dist --no-daemon -q
 
 if [[ ! $? == '0' ]]; then
     echo "Build Failed"
     exit 1
 fi
-
-# cp  ./build/libs/previewer.jar ../Botzilla/schematic-previewer.jar
 
 [[ $# -ne 0 ]] && exit 1
 
