@@ -1,158 +1,62 @@
 package schematichandler;
 
 import arc.files.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.Strings;
-import com.beust.jcommander.*;
 import com.google.gson.*;
 
 import javax.imageio.*;
-import java.awt.*;
 import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
 
 public class SchematicHandler {
-    private static int c = 0;
+    public static Gson gson = new GsonBuilder().disableHtmlEscaping().create();
     public static void main(String[] args) {
-        SchematicOptions parsedArgs = null;
-        try {
-            parsedArgs = parseArgs(args);
-            if (parsedArgs.bulk != null) parseBulk(Fi.get(parsedArgs.bulk).readString());
-        } catch(ParameterException e) {
-            System.out.println(e.getMessage());
-            SchematicOptions.parser.usage();
-            System.exit(1);
-        }
-
-        System.out.print("Loading Sprites...");
         Schematic.init();
-        System.out.println("Done");
 
         try {
-            long start = System.currentTimeMillis();
-            if (parsedArgs.bulk == null) {
-                var schem = new Schematic(parsedArgs.schematic, parsedArgs.background, parsedArgs.backgroundOffset, fromHex(parsedArgs.borderColor), parsedArgs.createPreview, parsedArgs.pixelArt);
-                if (parsedArgs.createPreview) ImageIO.write(schem.image, "png", new File(parsedArgs.outPath));
-                if (parsedArgs.dataPath == null) {
-                    System.out.println(schem.toString(">"));
-                } else {
-                    var map = schem.toMap();
-                    if (parsedArgs.createPreview) map.put("previewPath", parsedArgs.outPath);
-                    Fi.get(parsedArgs.dataPath).writeString(new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create().toJson(map) + "\n");
-                }
-            } else {
-                var bulk = parseBulk(Fi.get(parsedArgs.bulk).readString());
-                System.out.println("Parsing " + bulk.size + " schematics");
-                var gson = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
-                var done = new Seq<HashMap<String, Object>>();
+            var schematicOptions = gson.fromJson(Fi.get(args[0]).reader(), JsonArray.class);
+            var previewed = new JsonArray();
 
-                for(var opts: bulk) {
-                    try {
-                        var schem = new Schematic(opts.schematic, opts.background, opts.backgroundOffset, fromHex(opts.borderColor), opts.createPreview, opts.pixelArt);
-                        if (opts.createPreview) ImageIO.write(schem.image, "png", new File(opts.outPath));
+            schematicOptions.forEach(schematicOption -> {
+                var path = schematicOption.getAsJsonObject().get("schematicPath").getAsString();
+                var previewPath = schematicOption.getAsJsonObject().get("previewPath").getAsString();
 
-                        var map = schem.toMap();
-                        map.put("success", true);
-                        map.put("schem", opts.schematic);
-			            if (opts.createPreview) map.put("previewPath", opts.outPath);
-                        done.add(map);
-                    } catch(Exception e) {
-                        var map = new HashMap<String, Object>();
-                        map.put("success", false);
-                        map.put("message", e.getMessage());
-                        done.add(map);
+                try {
+                    var rendered = new Schematic(path, previewPath != null);
+                    var previewData = rendered.toJson();
+
+                    if (previewPath != null) {
+                        ImageIO.write(rendered.image, "png", Fi.get(previewPath).write());
+                        previewData.addProperty("previewPath", previewPath);
                     }
+
+                    previewed.add(previewData);
+
+                } catch (IOException e) {
+                    var error = new JsonObject();
+                    error.addProperty("schematicPath", path);
+                    error.addProperty("error", e.getMessage());
+
+                    if (e.getMessage().equals("Either the schematic is inaccessible or provided base64 is invalid") || e.getMessage().equals("That schematic is no where to be found") || e.getMessage().equals("Schematic has no blocks")) {
+                        error.addProperty("code", SchematicErrorCodes.InvalidSchematic.ordinal());
+                    } else if (e.getMessage().equals("Schematic is way to big to render even at a reduced size")) {
+                        error.addProperty("code", SchematicErrorCodes.TooBig.ordinal());
+                    } else {
+                        error.addProperty("code", SchematicErrorCodes.Other.ordinal());
+                    }
+
+                    previewed.add(error);
                 }
+            });
 
-                Fi.get(parsedArgs.dataPath).writeString(gson.toJson(done.toArray()) + "\n");
-            }
-            long end = System.currentTimeMillis();
+            System.out.println(gson.toJson(previewed));
 
-            long genTime = end - start;
-            long total = genTime + Schematic.timeToLoad;
-            System.out.printf("Total Time %d.%ds | Preview %d.%ds | Load %d.%ds",
-                TimeUnit.MILLISECONDS.toSeconds(total), total - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(total)),
-                TimeUnit.MILLISECONDS.toSeconds(genTime), genTime - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(genTime)),
-                TimeUnit.MILLISECONDS.toSeconds(Schematic.timeToLoad), Schematic.timeToLoad - TimeUnit.SECONDS.toMillis(TimeUnit.MILLISECONDS.toSeconds(Schematic.timeToLoad))
-            );
-            System.out.println();
-
-        } catch(Exception e) {
-            e.printStackTrace();
-            System.exit(1);
+        } catch (JsonSyntaxException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    public static Seq<SchematicOptions> parseBulk(String bulk) {
-        var parsed = new Seq<SchematicOptions>();
-        var lines = bulk.split("\r?\n");
-        var hadError = false;
-
-        for(int i = 0; i < lines.length; i++) {
-            try {
-                if (lines[i].length() > 0) parsed.add(parseArgs(lines[i].split(" "), true));
-            } catch(ParameterException e) {
-                System.err.printf("Bulk Line[%d]: %s\n", i, e.getMessage());
-                hadError = true;
-            }
-        }
-
-        if (hadError) {
-            SchematicOptions.parser.usage();
-            System.exit(1);
-        }
-
-        return parsed;
-    }
-
-    public static SchematicOptions parseArgs(String[] args) throws ParameterException {
-        return parseArgs(args, false);
-    }
-
-    public static SchematicOptions parseArgs(String[] args, boolean inBulk) throws ParameterException {
-        var parsed = new SchematicOptions();
-        SchematicOptions.parser = JCommander.newBuilder().addObject(parsed).build();
-        SchematicOptions.parser.parse(args);
-        if (parsed.bulk == null) {
-            if (parsed.schemFiles.size() == 0) throw new ParameterException("Missing schematic file");
-            parsed.schematic = parsed.schemFiles.get(0);
-            if (parsed.outPath == null && parsed.createPreview) {
-                if (!inBulk) throw new ParameterException("The following option is required: [-o, --out, --output]");
-                parsed.outPath = Strings.format("@@.png", Time.millis(), ++c);
-            }
-            if (parsed.createPreview && parsed.pixelArt && !parsed.background) throw new ParameterException("Pixel art option needs background option to be set to true");
-            if (parsed.backgroundOffset < 0) throw new ParameterException("Background offset cant be smaller then zero");
-            if (!Fi.get(parsed.schematic).exists() && !parsed.schematic.startsWith(Schematic.header)) throw new ParameterException("Schematic is not a valid path and not base64");
-            if (inBulk && parsed.dataPath != null) throw new ParameterException("Data path cannot be used in bulk file");
-        } else {
-            if (inBulk) throw new ParameterException("Bulk option cannot be used in bulk file");
-            if (!Fi.get(parsed.bulk).exists()) throw new ParameterException("Path to bulk file is invalid");
-            if (parsed.dataPath == null) throw new ParameterException("Data path is required in bulk mode");
-        }
-        return parsed;
-    }
-
-    public static String removeNewlines(String str) {
-        return str.replace(";", "\\;").replace("\r\n", "\n").replace("\r", "\n").replace("\n", ";");
-    }
-
-    public static Color fromHex(String colorStr) {
-        return new Color(
-        Integer.valueOf( colorStr.substring( 1, 3 ), 16 ),
-        Integer.valueOf( colorStr.substring( 3, 5 ), 16 ),
-        Integer.valueOf( colorStr.substring( 5, 7 ), 16 ) );
-    }
-
-    public static class ColorValidator implements IValueValidator<String> {
-        @Override
-        public void validate(String name, String value) throws ParameterException {
-            try {
-                fromHex(value);
-            } catch(Exception ignored) {
-                throw new ParameterException("Parameter " + name + " is not a valid hex color");
-            }
-        }
+    public enum SchematicErrorCodes {
+        InvalidSchematic,
+        TooBig,
+        Other
     }
 }

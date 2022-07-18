@@ -10,6 +10,8 @@ import arc.mock.*;
 import arc.struct.*;
 import arc.files.*;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.jidesoft.swing.*;
 import mindustry.*;
 import mindustry.core.*;
@@ -27,12 +29,16 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.awt.image.*;
 import java.io.*;
-import java.util.*;
 import java.util.zip.*;
 
 import static mindustry.Vars.*;
 
 public class Schematic{
+    public static final boolean drawBackground = true;
+    public static final java.awt.Color borderColor = new java.awt.Color(Color.packRgba(45, 45, 45, 0));
+    public static final int backgroundOffset = 32;
+    public static final boolean makePixelArt = true;
+
     public static final String header = schematicBaseStart;
     public BufferedImage image;
     public mindustry.game.Schematic schematic;
@@ -56,7 +62,8 @@ public class Schematic{
     static public long timeToLoad;
     static public final int size = 4;
 
-    Schematic(String path, boolean drawBackground, int backgroundOffset, java.awt.Color borderColor, boolean createImage, boolean pixelArt) throws IOException{
+    Schematic(String path, boolean createImage) throws IOException{
+        // attempt to read the schematic
         if(Fi.get(path).exists()){
             schematic = Schematics.read(Fi.get(path));
         }else if(path.startsWith(header)){
@@ -70,30 +77,38 @@ public class Schematic{
             throw new IOException("That schematic is no where to be found");
         }
 
-        if(schematic.tiles.size == 0) throw new RuntimeException("Schematic has no blocks");
+        // bad schematic
+        if(schematic.tiles.size == 0) throw new IOException("Schematic has no blocks");
 
+        // get all the blocks in the schematic
         Seq<BuildPlan> requests = schematic.tiles.map(t -> new BuildPlan(t.x, t.y, t.rotation, t.block, t.config));
-        hasPixelArt = pixelArt;
+
+        // check if it has pixel art
+        hasPixelArt = makePixelArt;
         requests.each(req -> {
-            if(pixelArt && hasPixelArt && !pixelArtBlocks.contains(req.block.name)) hasPixelArt = false;
+            if(makePixelArt && hasPixelArt && !pixelArtBlocks.contains(req.block.name)) hasPixelArt = false;
             if (req.block instanceof Battery) {
                 batteryStorage += req.block.consPower.capacity;
             }
         });
 
+        // no image creation
         if(!createImage) return;
 
+        // check if it can be rendered otherwise keep reducing resolution
         tempSize = 4;
-        while(getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory() && tempSize > 1) tempSize--;
+        while(getMemUsed() > Runtime.getRuntime().freeMemory() && tempSize > 1) tempSize--;
         renderSize = tempSize;
 
-        if(getMemUsed(drawBackground, backgroundOffset, pixelArt) > Runtime.getRuntime().freeMemory()){
-            throw new RuntimeException("Schematic is way to big to render even at a reduced size");
+        if(getMemUsed() > Runtime.getRuntime().freeMemory()){
+            throw new IOException("Schematic is way to big to render even at a reduced size");
         }
 
 //        System.out.printf("Will be rendering at %s:1 the size\n", String.format("%.2f", size / 4f).replace(".00", ""));
+        // empty image
         var schematicImage = new BufferedImage(schematic.width * tempSize * tilesize, schematic.height * tempSize * tilesize, BufferedImage.TYPE_INT_ARGB);
 
+        // draw all the blocks
         Draw.reset();
         currentImage = schematicImage;
         currentGraphics = schematicImage.createGraphics();
@@ -103,6 +118,8 @@ public class Schematic{
             req.block.drawPlanRegion(req, requests);
             Draw.reset();
         });
+
+        // draw all the bridge conveyor connections
         requests.each(req -> { // Draw bridge conveyors separately first to avoid some being over power node connections and some below
             if(req.block instanceof ItemBridge){
                 Draw.alpha(bridgeOpacity);
@@ -110,14 +127,18 @@ public class Schematic{
                 Draw.reset();
             }
         });
+
+        // draw all the power node connections
         requests.each(req -> {
             if(!(req.block instanceof ItemBridge)){
                 req.block.drawPlanConfigTop(req, requests);
                 Draw.reset();
             }
         });
+
         image = schematicImage;
 
+        // render background
         if(drawBackground){
             int width = schematicImage.getWidth() + (backgroundOffset * 2);
             int height = schematicImage.getHeight() + (backgroundOffset * 2);
@@ -127,8 +148,12 @@ public class Schematic{
 
             BufferedImage art = null;
 
-            if(pixelArt && hasPixelArt){
+            // render pixel arg (if it has any)
+            if(makePixelArt && hasPixelArt){
                 art = getPixelArt(requests, pixelSize, pixelArtBorderPixels);
+
+                // calculate position of the pixel art
+
                 if(art.getHeight() <= art.getWidth()){
                     width -= backgroundOffset * 2;
                     height -= 20;
@@ -162,6 +187,7 @@ public class Schematic{
                 }
             }
 
+            // shadow for the schematic blocks
             var factory = new ShadowFactory();
             factory.setRenderingHint(ShadowFactory.KEY_BLUR_QUALITY, ShadowFactory.VALUE_BLUR_QUALITY_HIGH);
             factory.setColor(java.awt.Color.black);
@@ -172,19 +198,23 @@ public class Schematic{
             BufferedImage background = ImageIO.read(Core.files.internal("schematic-background.png").read());
             BufferedImage withBackground = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
+            // make background fit schematic size (used as base image)
             background = repeatToSize(background, width, height);
             currentGraphics = withBackground.createGraphics();
             currentImage = withBackground;
 
+            // draw background, schematic and shadow on base image
             currentGraphics.drawImage(background, 0, 0, null);
             currentGraphics.drawImage(shadow, schematicOffsetX - 24, schematicOffsetY - 24, null);
             currentGraphics.drawImage(schematicImage, schematicOffsetX, schematicOffsetY, null);
 
+            // draw borders on base image
             currentGraphics.setColor(borderColor);
             currentGraphics.setStroke(new BasicStroke(4f));
             currentGraphics.drawRect(2, 2, width - 4, height - 4);
 
-            if(pixelArt && hasPixelArt){
+            // draw pixel art on base image
+            if(makePixelArt && hasPixelArt){
                 currentGraphics.drawImage(art, currentImage.getWidth() - art.getWidth() - 4, 4, null);
 
                 currentGraphics.setColor(borderColor);
@@ -192,9 +222,11 @@ public class Schematic{
                 currentGraphics.drawRect(currentImage.getWidth() - art.getWidth() - 4 - 1, 3, art.getWidth() + 2, art.getHeight() + 2);
             }
 
+            // replace schematic image with one with the background
             this.image = withBackground;
         }else{
-            if(pixelArt && hasPixelArt){
+            // draw pixel art on the schematic image (no background here)
+            if(makePixelArt && hasPixelArt){
                 var art = getPixelArt(requests, pixelSize, pixelArtBorderPixels, true);
                 var full = new BufferedImage(currentImage.getWidth() + art.getWidth(), currentImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
@@ -210,13 +242,16 @@ public class Schematic{
         currentGraphics.dispose();
     }
 
-    private long getMemUsed(boolean drawBackground, int backgroundOffset, boolean pixelArt){
+    /**
+     * @return memory required for rendering schematic preview
+     */
+    private long getMemUsed(){
         if(drawBackground){
             var schemMem = (schematic.width * tilesize * tempSize) * (schematic.height * tilesize * tempSize) * 4;
             var backgroundMem = 0;
             var shadowMem = schemMem * 2;
 
-            if(pixelArt && hasPixelArt){
+            if(makePixelArt && hasPixelArt){
                 var artWidth = (schematic.width + pixelArtBorderPixels) * pixelSize;
                 var artHeight = (schematic.height + pixelArtBorderPixels) * pixelSize;
                 backgroundMem = (((schematic.width + backgroundOffset) * tilesize * tempSize) + artWidth) * (((schematic.height + backgroundOffset) * tilesize * tempSize) + artHeight) * 4;
@@ -227,12 +262,12 @@ public class Schematic{
 
             var total = schemMem + backgroundMem + shadowMem;
 
-            if(pixelArt && hasPixelArt){
+            if(makePixelArt && hasPixelArt){
                 total += (((schematic.width + pixelArtBorderPixels) * pixelSize) * ((schematic.height + pixelArtBorderPixels) * pixelSize)) * 3;
             }
 
             return total;
-        }else if(pixelArt && hasPixelArt){
+        }else if(makePixelArt && hasPixelArt){
             var schemWidth = schematic.width * tilesize * tempSize;
             var schemHeight = schematic.height * tilesize * tempSize;
 
@@ -250,46 +285,34 @@ public class Schematic{
         }
     }
 
-    public String toString(String prefix){
-        var sb = new StringBuilder();
-        sb.append(prefix).append("name=").append(SchematicHandler.removeNewlines(schematic.name())).append('\n');
-        sb.append(prefix).append("description=").append(SchematicHandler.removeNewlines(schematic.description())).append('\n');
-        if (schematic.requirements().toSeq().size > 0) {
-            var temp = new StringBuilder(prefix + "requirements={ ");
-            schematic.requirements().forEach(item -> temp.append("\"").append(item.item.name).append("\"").append(" : ").append(item.amount).append(", "));
-            sb.append(temp.substring(0, temp.length() - 2)).append(" }\n");
-        } else {
-            sb.append(prefix).append("requirements={ }").append('\n');
-        }
-        sb.append(prefix).append("numBlocks=").append(schematic.tiles.size).append('\n');
-        sb.append(prefix).append("powerProd=").append(schematic.powerProduction() * 60f).append('\n');
-        sb.append(prefix).append("powerUsed=").append(schematic.powerConsumption() * 60f).append('\n');
-        sb.append(prefix).append("batteryStorage=").append(batteryStorage).append('\n');
-        sb.append(prefix).append("width=").append(schematic.width).append('\n');
-        sb.append(prefix).append("height=").append(schematic.height).append('\n');
-        return sb.toString();
+    public JsonObject toJson() {
+        var obj = new JsonObject();
+
+        var req = new JsonObject();
+        schematic.requirements().forEach(item -> req.addProperty(item.item.name, item.amount));
+
+        var labels = new JsonArray();
+        schematic.labels.forEach(labels::add);
+
+        obj.addProperty("name", schematic.name());
+        obj.addProperty("description", schematic.description());
+        obj.addProperty("blockCount", schematic.tiles.size);
+        obj.addProperty("powerProduced", schematic.powerProduction() * 60f);
+        obj.addProperty("powerConsumed", schematic.powerConsumption() * 60f);
+        obj.addProperty("powerStored", batteryStorage);
+        obj.addProperty("width", schematic.width);
+        obj.addProperty("height", schematic.height);
+        obj.addProperty("quality", renderSize);
+
+        obj.add("requirements", req);
+        obj.add("labels", labels);
+
+        return obj;
     }
 
-    public HashMap<String, Object> toMap() {
-        var map = new HashMap<String, Object>();
-
-        var req = new HashMap<String, Integer>();
-        schematic.requirements().forEach(item -> req.put(item.item.name, item.amount));
-
-        map.put("name", schematic.name());
-        map.put("description", schematic.description());
-        map.put("requirements", req);
-        map.put("numBlocks", schematic.tiles.size);
-        map.put("powerProd", schematic.powerProduction() * 60f);
-        map.put("powerUsed", schematic.powerConsumption() * 60f);
-        map.put("batteryStorage", batteryStorage);
-        map.put("width", schematic.width);
-        map.put("height", schematic.height);
-        map.put("renderSize", renderSize);
-
-        return map;
-    }
-
+    /**
+     * Initialize all the mindustry blocks, sprites etc
+     */
     static public void init(){
         if (inited) return;
         long start = System.currentTimeMillis();
@@ -338,12 +361,10 @@ public class Schematic{
             page.texture.height = page.height;
         });
 
-        data.getRegions().each(reg -> {
-            Core.atlas.addRegion(reg.name, new AtlasRegion(reg.page.texture, reg.left, reg.top, reg.width, reg.height){{
-                name = reg.name;
-                texture = reg.page.texture;
-            }});
-        });
+        data.getRegions().each(reg -> Core.atlas.addRegion(reg.name, new AtlasRegion(reg.page.texture, reg.left, reg.top, reg.width, reg.height){{
+            name = reg.name;
+            texture = reg.page.texture;
+        }}));
 
         Lines.useLegacyLine = true;
         Core.atlas.setErrorRegion("error");
@@ -414,6 +435,13 @@ public class Schematic{
         return copy;
     }
 
+    /**
+     * repeats a small image over and over until it reaches the desired dimensions (mainly used for drawing the background, could be optimized)
+     * @param image image to repeat
+     * @param newWidth width of the repeated image
+     * @param newHeight height of the repeated image
+     * @return repeated image
+     */
     private BufferedImage repeatToSize(BufferedImage image, int newWidth, int newHeight){
         BufferedImage resized = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = resized.createGraphics();
@@ -432,6 +460,13 @@ public class Schematic{
         return getPixelArt(plans, pixelSize, bgSize, false);
     }
 
+    /**
+     * @param plans schematic blocks
+     * @param pixelSize size of each pixel
+     * @param bgSize padding around the pixel art
+     * @param noBg render with a background (it is a solid color)
+     * @return render pixel art
+     */
     private BufferedImage getPixelArt(Seq<BuildPlan> plans, int pixelSize, int bgSize, boolean noBg) {
         BufferedImage pixelArt = new BufferedImage((schematic.width + bgSize) * pixelSize, (schematic.height + bgSize) * pixelSize, noBg ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB);
         var g = pixelArt.createGraphics();
@@ -441,27 +476,27 @@ public class Schematic{
             g.fillRect(0, 0, pixelArt.getWidth(), pixelArt.getHeight());
         }
 
-        for(int x = 0; x < schematic.width; x++){
-            for(int y = 0; y < schematic.height; y++){
-                var finalX = x;
-                var finalY = y;
-                var plan = plans.find(p -> p.x == finalX && p.y == finalY);
-
-                if (plan != null && plan.config != null) {
-                    g.setColor(awtColor(((Item)plan.config).color));
-                    g.fillRect((x + (bgSize / 2)) * pixelSize, pixelArt.getHeight() - pixelSize - ((y + (bgSize / 2)) * pixelSize), pixelSize, pixelSize);
-                }
-            }
-        }
+        plans.forEach(plan -> {
+            g.setColor(awtColor(((Item)plan.config).color));
+            g.fillRect((plan.x + (bgSize / 2)) * pixelSize, pixelArt.getHeight() - pixelSize - ((plan.y + (bgSize / 2)) * pixelSize), pixelSize, pixelSize);
+        });
 
         g.dispose();
         return pixelArt;
     }
 
+    /**
+     * @param col arc color
+     * @return converted to java.awt.color
+     */
     private java.awt.Color awtColor(Color col) {
         return new java.awt.Color(col.r, col.g, col.b, col.a);
     }
 
+    /**
+     * @param name name of the block
+     * @return image for that block
+     */
     static private BufferedImage getImage(String name){
         return regions.get(name, () -> {
             try{
