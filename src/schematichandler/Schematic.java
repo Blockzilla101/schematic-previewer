@@ -303,6 +303,7 @@ public class Schematic{
         obj.addProperty("powerStored", batteryStorage);
         obj.addProperty("width", schematic.width);
         obj.addProperty("height", schematic.height);
+        obj.addProperty("hasArt", hasPixelArt);
         obj.addProperty("quality", renderSize);
 
         obj.add("requirements", req);
