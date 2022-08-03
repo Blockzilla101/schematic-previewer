@@ -22,6 +22,7 @@ public class SchematicHandler {
                 try {
                     var rendered = new Schematic(path, previewPath != null);
                     var previewData = rendered.toJson();
+                    previewData.addProperty("schematicPath", path);
 
                     if (previewPath != null) {
                         ImageIO.write(rendered.image, "png", Fi.get(previewPath).write());
