@@ -17,7 +17,7 @@ public class SchematicHandler {
 
             schematicOptions.forEach(schematicOption -> {
                 var path = schematicOption.getAsJsonObject().get("schematicPath").getAsString();
-                var previewPath = schematicOption.getAsJsonObject().get("previewPath").getAsString();
+                var previewPath = schematicOption.getAsJsonObject().get("previewPath") == null ? null : schematicOption.getAsJsonObject().get("previewPath").getAsString();
 
                 try {
                     var rendered = new Schematic(path, previewPath != null);
