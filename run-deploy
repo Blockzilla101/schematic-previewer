@@ -1,10 +1,30 @@
 #!/usr/bin/bash
 
+cd ../Mindustry
+git apply ../.patches/disable-white-space.patch
+
+grep 'stripWhitespaceCenter: true' -iR core/assets-raw/sprites
+if [[ $? == '0' ]]; then
+    git reset --hard
+    cd ../schematic-previewer
+    echo "Update patch file"
+    exit 1;
+fi
+
+./gradlew tools:pack --no-daemon
+git reset --hard
+
+cd ../schematic-previewer
+
 ./gradlew dist --no-daemon -q
 
 if [[ ! $? == '0' ]]; then
-    echo "Build Failed"
-    exit 1
+    sleep $((5 * 60)) # wait for jitpack
+    ./gradlew dist --no-daemon -q
+    if [[ ! $? == '0' ]]; then
+        echo "Build Failed"
+        exit 1
+    fi
 fi
 
 [[ $# -ne 0 ]] && exit 0
